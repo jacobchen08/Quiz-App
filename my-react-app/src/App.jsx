@@ -1,28 +1,39 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
 import './App.css'
 
 
 
+//cd my-react-app
+//npm run dev
+
+
+
 function buttonCall() {
-  alert("Button clicked!");
-  fetch
+  alert('Button clicked!')
+
+  
+  fetch('http://localhost:8000/questions')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error))
+  
 }
+
 
 
 
 function App() {
   return (
     <div className="App">
-      <h1>Hello World!</h1>
+      <h1>Quiz App</h1>
+  
+      <button onClick={buttonCall}>Generate Questions</button>
+  
+
+
     </div>
-
-
-
-
-  );
+    
+    
+  )
 }
 
 export default App
