@@ -6,6 +6,8 @@ import { useState, useMemo } from 'react';
 // npm run dev
 
 //to do list: make the user be able to change the number of questions, difficulty, and category of questions. Make the user be able to select the correct answer and see if they are right or wrong. Make the user be able to see their score at the end of the quiz. Make the user be able to restart the quiz.
+//implement true false question functionality
+
 
 function App() {
   const [category, setCategory] = useState([]);
@@ -61,7 +63,7 @@ function App() {
       .then((data) => {
         // Extract decoded question strings
         const questionTexts = data.map((item) => decodeHtml(item.question));
-        const categories = data.map((item) => item.category);
+        const categories = data.map((item) => decodeHtml(item.category));
         const correctAnswers = data.map((item) => decodeHtml(item.correct_answer));
         const incorrectAnswers = data.map((item) => item.incorrect_answers.map(ans => decodeHtml(ans)));
         const types = data.map((item) => item.type);
@@ -73,13 +75,53 @@ function App() {
         setType(types);
         setCurrentIndex(0);
         console.log(data);
+        setScore(0);
+        setAnsweredQuestions([]);
       })
       .catch((error) => console.error('Error:', error));
   }
 
+  function setCat(category_number){
+    fetch(`http://localhost:8000/category?category_num=${category_number}`)
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((err) => console.error(err));
+  }
+  function setDiff(difficultyLevel){
+    fetch(`http://localhost:8000/difficulty?diff=${difficultyLevel}`)
+    .then((res) => res.json())
+    .then((data) => console.log(data))
+    .catch((err) => console.error(err));
+  }
+  function setTyp(questionType){
+    fetch(`http://localhost:8000/type?type=${questionType}`)
+    .then((res) => res.json())
+    .then((data) => console.log(data))
+    .catch((err) => console.error(err));
+  }
+  function setCount(num){
+    fetch(`http://localhost:8000/count?num=${num}`)
+    .then((res) => res.json())
+    .then((data) => console.log(data))
+    .catch((err) => console.error(err));
+  }
+
+
+  const [numQuestions, setNumQuestions] = useState(10)
+
+//category, difficultyLevel, questionType should be drop down menus and should include all
   return (
     <div className="App">
       <h1>Quiz App</h1>
+      
+      <input
+        type="number"
+        value={numQuestions}
+        min="1"
+        max="50"
+        onChange={(e) => setNumQuestions(e.target.value)}
+      />
+      <button onClick={() => setCount(numQuestions)}>Set number of questions (1-50)</button>
 
       <button onClick={buttonCall}>Generate Questions</button>
 
@@ -150,8 +192,14 @@ function App() {
           </div>
           ) : (
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
-              <button>True</button>
-              <button>False</button>
+              <button
+                onClick={() => handleAnswerSelection("True")}
+                disabled = {answeredQuestions.includes(currentIndex)}
+              >True</button>
+              <button
+                onClick={() => handleAnswerSelection("False")}
+                disabled = {answeredQuestions.includes(currentIndex)}
+              >False</button>
             </div>
           )}
         </div>
