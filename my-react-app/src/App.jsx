@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
 // npm run dev
 
 //to do list: make the user be able to change the number of questions, difficulty, and category of questions. Make the user be able to select the correct answer and see if they are right or wrong. Make the user be able to see their score at the end of the quiz. Make the user be able to restart the quiz.
-//implement true false question functionality
+
 
 
 function App() {
@@ -107,9 +107,12 @@ function App() {
   }
 
 
-  const [numQuestions, setNumQuestions] = useState(10)
+  const [numQuestions, setNumQuestions] = useState(10) //already works
+  const [commonCategory, setCommonCategory] = useState() //to be implemented
+  const [commonType, setCommonType] = useState() //to be implemented
+  const [commonDifficulty, setCommonDifficulty] = useState() //to be implemented
 
-//category, difficultyLevel, questionType should be drop down menus and should include all
+//category, difficultyLevel, questionType should be drop down menus and should include all, which is the default
   return (
     <div className="App">
       <h1>Quiz App</h1>

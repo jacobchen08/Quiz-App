@@ -73,7 +73,10 @@ def change_question_count(num: int):
 def change_category(category_num: int):
     global category
     #there's only a certain valid list of categories so I need to restrict this
-    category = category_num
+    if(9 <= category_num <= 32):
+        category = category_num 
+    else:
+        category = "all"
 
 
 @app.get("/difficulty")
