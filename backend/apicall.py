@@ -85,7 +85,8 @@ def change_difficulty(diff: str):
     if(diff == "easy" or diff == "medium" or diff == "hard"):
         difficulty = diff
     else:
-        return{"error, invalid difficulty"}
+        difficulty = "all"
+        #return{"error, invalid difficulty"}
     
 
 @app.get("/type")
@@ -94,7 +95,7 @@ def change_type(type: str):
     if(type == "multiple" or type == "boolean"):
         type_of_question = type
     else:
-        return{"error, invalid type"}
+        type_of_question = "all"
 
 
 

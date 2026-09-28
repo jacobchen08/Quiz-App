@@ -1,5 +1,6 @@
 import './App.css';
 import { useState, useMemo } from 'react';
+import { useEffect } from 'react';
 
 // start localhost 8000 in apicall.py
 // cd my-react-app
@@ -20,6 +21,11 @@ function App() {
   const [score, setScore] = useState(0); // New state for score
   const [answeredQuestions, setAnsweredQuestions] = useState([]); // Contains indexes of answered questions
 
+  const [numQuestions, setNumQuestions] = useState(10) //already works
+  const [commonCategory, setCommonCategory] = useState() //to be implemented
+  const [commonType, setCommonType] = useState() //to be implemented
+  const [commonDifficulty, setCommonDifficulty] = useState() //to be implemented
+
   //randomizes order of answers for multiple choice questions
   const currentOptions = useMemo(() => {
     if (questions.length === 0) return [];
@@ -29,6 +35,12 @@ function App() {
           .sort(() => Math.random() - 0.5)
       : ['True', 'False'];
   }, [currentIndex, questions]); // Only recalculates when currentIndex or questions change
+
+  useEffect(() => {
+    setCat(commonCategory);
+    setDiff(commonDifficulty);
+    setTyp(commonType);
+  }, [commonCategory, commonType, commonDifficulty]);
 
   function nextQuestion() {
     if (currentIndex < questions.length - 1) {
@@ -107,10 +119,7 @@ function App() {
   }
 
 
-  const [numQuestions, setNumQuestions] = useState(10) //already works
-  const [commonCategory, setCommonCategory] = useState() //to be implemented
-  const [commonType, setCommonType] = useState() //to be implemented
-  const [commonDifficulty, setCommonDifficulty] = useState() //to be implemented
+  
 
   const [categoryMap, setCategoryMap] = useState({
     "Any Category": "all",
@@ -140,16 +149,7 @@ function App() {
     "Entertainment: Cartoon & Animations" : 32
   })
 
-  function categoryDropdown(){
 
-
-
-  }
-
-  function difficultyDropdown(){
-
-    
-  }
 
 
 
@@ -168,6 +168,24 @@ function App() {
       <button onClick={() => setCount(numQuestions)}>Set number of questions (1-50)</button>
 
       <button onClick={buttonCall}>Generate Questions</button>
+
+      <select value={commonCategory} onChange={(e) => setCommonCategory(e.target.value)}>
+        <option value="">Any Category</option>
+        {Object.entries(categoryMap).map(([category, id]) => (
+          <option key={id} value={id}>{category}</option>
+        ))}
+      </select>
+      <select value={commonDifficulty} onChange={(e) => setCommonDifficulty(e.target.value)}>
+        <option value="">Any Difficulty</option>
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <select value={commonType} onChange={(e) => setCommonType(e.target.value)}>
+        <option value="">Any Question Type</option>
+        <option value="multiple">Multiple Choice</option>
+        <option value="boolean">True/False</option>
+      </select>
 
       {questions.length > 0 ? (
         <div style={{ marginTop: '20px' }}>
