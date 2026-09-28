@@ -20,6 +20,8 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0); // New state for score
   const [answeredQuestions, setAnsweredQuestions] = useState([]); // Contains indexes of answered questions
+  const [selectedAnswers, setSelectedAnswers] = useState({}); // question index -> answer the user picked
+  const [loading, setLoading] = useState(false);
 
   const [numQuestions, setNumQuestions] = useState(10) //already works
   const [commonCategory, setCommonCategory] = useState() //to be implemented
@@ -65,10 +67,11 @@ function App() {
       setScore((prevScore) => prevScore + 1);
     }
     setAnsweredQuestions((prev) => [...prev, currentIndex]); // Mark the question as answered
+    setSelectedAnswers((prev) => ({ ...prev, [currentIndex]: selectedAnswer }));
   }
 
   function buttonCall() {
-    alert('Button clicked!');
+    setLoading(true);
 
     fetch('http://localhost:8000/questions')
       .then((response) => response.json())
@@ -89,8 +92,10 @@ function App() {
         console.log(data);
         setScore(0);
         setAnsweredQuestions([]);
+        setSelectedAnswers({});
       })
-      .catch((error) => console.error('Error:', error));
+      .catch((error) => console.error('Error:', error))
+      .finally(() => setLoading(false));
   }
 
   function setCat(category_number){
@@ -154,119 +159,125 @@ function App() {
 
 
 //category, difficultyLevel, questionType should be drop down menus and should include all, which is the default
+  const isAnswered = answeredQuestions.includes(currentIndex);
+  const picked = selectedAnswers[currentIndex];
+  const options = type[currentIndex] === 'multiple' ? currentOptions : ['True', 'False'];
+  const progress = questions.length ? (answeredQuestions.length / questions.length) * 100 : 0;
+
+  function answerClass(option) {
+    if (!isAnswered) return 'answer';
+    if (option === correctAnswer[currentIndex]) return 'answer correct';
+    if (option === picked) return 'answer wrong';
+    return 'answer dimmed';
+  }
+
   return (
     <div className="App">
-      <h1>Quiz App</h1>
-      
-      <input
-        type="number"
-        value={numQuestions}
-        min="1"
-        max="50"
-        onChange={(e) => setNumQuestions(e.target.value)}
-      />
-      <button onClick={() => setCount(numQuestions)}>Set number of questions (1-50)</button>
+      <header className="header">
+        <h1>Quiz App</h1>
+        <p>Pick your settings, generate a quiz, and test what you know.</p>
+      </header>
 
-      <button onClick={buttonCall}>Generate Questions</button>
+      <section className="card">
+        <h2 className="card-title">Quiz settings</h2>
+        <div className="settings-grid">
+          <div className="field">
+            <label htmlFor="num-questions">Number of questions (1–50)</label>
+            <div className="count-row">
+              <input
+                id="num-questions"
+                type="number"
+                value={numQuestions}
+                min="1"
+                max="50"
+                onChange={(e) => setNumQuestions(e.target.value)}
+              />
+              <button className="btn" onClick={() => setCount(numQuestions)}>Set</button>
+            </div>
+          </div>
 
-      <select value={commonCategory} onChange={(e) => setCommonCategory(e.target.value)}>
-        <option value="">Any Category</option>
-        {Object.entries(categoryMap).map(([category, id]) => (
-          <option key={id} value={id}>{category}</option>
-        ))}
-      </select>
-      <select value={commonDifficulty} onChange={(e) => setCommonDifficulty(e.target.value)}>
-        <option value="">Any Difficulty</option>
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
-      </select>
-      <select value={commonType} onChange={(e) => setCommonType(e.target.value)}>
-        <option value="">Any Question Type</option>
-        <option value="multiple">Multiple Choice</option>
-        <option value="boolean">True/False</option>
-      </select>
+          <div className="field">
+            <label htmlFor="category">Category</label>
+            <select id="category" value={commonCategory} onChange={(e) => setCommonCategory(e.target.value)}>
+              <option value="">Any Category</option>
+              {Object.entries(categoryMap).map(([category, id]) => (
+                <option key={id} value={id}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="difficulty">Difficulty</label>
+            <select id="difficulty" value={commonDifficulty} onChange={(e) => setCommonDifficulty(e.target.value)}>
+              <option value="">Any Difficulty</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="type">Question type</label>
+            <select id="type" value={commonType} onChange={(e) => setCommonType(e.target.value)}>
+              <option value="">Any Question Type</option>
+              <option value="multiple">Multiple Choice</option>
+              <option value="boolean">True/False</option>
+            </select>
+          </div>
+        </div>
+
+        <button className="btn btn-primary" onClick={buttonCall} disabled={loading}>
+          {loading ? 'Loading…' : questions.length > 0 ? 'Generate New Questions' : 'Generate Questions'}
+        </button>
+      </section>
 
       {questions.length > 0 ? (
-        <div style={{ marginTop: '20px' }}>
+        <section className="card">
+          <div className="quiz-top">
+            <span className="question-count">Question {currentIndex + 1} of {questions.length}</span>
+            <span className="score-pill">Score: {score} / {questions.length}</span>
+          </div>
+          <div className="progress"><span style={{ width: `${progress}%` }} /></div>
 
-          Score: {score} / {questions.length}
-          <p>
-            <strong>Question {currentIndex + 1} of {questions.length}</strong>
-            {category[currentIndex] && <span> ({category[currentIndex]})</span>}
-          </p>
-          <p>{questions[currentIndex]}</p>
+          {category[currentIndex] && <span className="category-tag">{category[currentIndex]}</span>}
+          <p className="question">{questions[currentIndex]}</p>
 
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
-            <button 
-              onClick={previousQuestion} 
-              disabled={currentIndex === 0}
-            >
-              Previous
-            </button>
-
-            <button 
-              onClick={nextQuestion} 
-              disabled={currentIndex >= questions.length - 1}
-            >
-              Next
-            </button>
+          <div className="answers">
+            {options.map((option, i) => (
+              <button
+                key={option}
+                className={answerClass(option)}
+                onClick={() => handleAnswerSelection(option)}
+                disabled={isAnswered}
+              >
+                <span className="answer-letter">{String.fromCharCode(65 + i)}</span>
+                {option}
+              </button>
+            ))}
           </div>
 
-          {/*If multiple choice, then have 4 buttons */}
-          {type[currentIndex] === 'multiple' ? (
-            
-
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
-            <button
-              onClick={() => handleAnswerSelection(currentOptions[0])}
-              disabled = {answeredQuestions.includes(currentIndex)}
-            >
-              {currentOptions[0]}
-              
-            </button>
-
-            <button
-              onClick={() => handleAnswerSelection(currentOptions[1])}
-              disabled = {answeredQuestions.includes(currentIndex)}
-            >
-              {currentOptions[1]}
-              
-            </button>
-
-            <button
-              onClick={() => handleAnswerSelection(currentOptions[2])}
-              disabled = {answeredQuestions.includes(currentIndex)}
-            >
-              {currentOptions[2]}
-              
-            </button>
-
-            <button
-              onClick={() => handleAnswerSelection(currentOptions[3])}
-              disabled = {answeredQuestions.includes(currentIndex)}
-            >
-              {currentOptions[3]}
-              
-            </button>
-            
-        
-          </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
-              <button
-                onClick={() => handleAnswerSelection("True")}
-                disabled = {answeredQuestions.includes(currentIndex)}
-              >True</button>
-              <button
-                onClick={() => handleAnswerSelection("False")}
-                disabled = {answeredQuestions.includes(currentIndex)}
-              >False</button>
-            </div>
+          {isAnswered && (
+            <p className={`feedback ${picked === correctAnswer[currentIndex] ? 'correct' : 'wrong'}`}>
+              {picked === correctAnswer[currentIndex]
+                ? 'Correct!'
+                : `Not quite. The answer is ${correctAnswer[currentIndex]}.`}
+            </p>
           )}
-        </div>
+
+          <div className="nav">
+            <button className="btn" onClick={previousQuestion} disabled={currentIndex === 0}>
+              ← Previous
+            </button>
+            <button className="btn" onClick={nextQuestion} disabled={currentIndex >= questions.length - 1}>
+              Next →
+            </button>
+          </div>
+        </section>
       ) : (
-        <p style={{ marginTop: '20px' }}>Click "Generate Questions" to begin.</p>
+        <section className="card empty">
+          <div className="empty-icon">🧠</div>
+          <p>Click "Generate Questions" to begin.</p>
+        </section>
       )}
     </div>
   );
