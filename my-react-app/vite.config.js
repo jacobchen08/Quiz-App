@@ -10,4 +10,10 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8000', ws: true },
     },
   },
+  // `npm test`: components render in a simulated browser (jsdom)
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    css: false,
+  },
 })

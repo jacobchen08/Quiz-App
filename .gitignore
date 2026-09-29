@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+
+# daily challenge results (SQLite)
+*.db
+
+# test caches
+.pytest_cache/

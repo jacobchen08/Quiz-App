@@ -2,15 +2,10 @@ import { useRef } from 'react';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import useIndicator from '../useIndicator';
-import { categories, categoryById } from '../categories';
+import { categories, categoryById, difficulties } from '../categories';
+import Pips from './Pips';
 
-// `pips` gives each difficulty a count as well as a colour, so it never relies on colour alone
-const difficulties = [
-  { value: '', label: 'Any' },
-  { value: 'easy', label: 'Easy', accent: 'teal', pips: 1 },
-  { value: 'medium', label: 'Medium', accent: 'orange', pips: 2 },
-  { value: 'hard', label: 'Hard', accent: 'magenta', pips: 3 },
-];
+const difficultyOptions = [{ value: '', label: 'Any' }, ...difficulties];
 
 // Listed A–Z in the picker ("Any Category" stays first)
 const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
@@ -42,13 +37,7 @@ function Switch({ legend, name, options, value, onChange }) {
               checked={value === option.value}
               onChange={() => onChange(option.value)}
             />
-            {option.pips && (
-              <span className={`pips accent-${option.accent}`} aria-hidden="true">
-                {Array.from({ length: 3 }, (_, i) => (
-                  <span key={i} className={i < option.pips ? 'on' : ''} />
-                ))}
-              </span>
-            )}
+            {option.pips && <Pips count={option.pips} accent={option.accent} />}
             <span>{option.label}</span>
           </label>
         ))}
@@ -109,7 +98,7 @@ function Settings({ settings, onChange, idPrefix = "" }) {
       <Switch
         legend="Difficulty"
         name={`${idPrefix}difficulty`}
-        options={difficulties}
+        options={difficultyOptions}
         value={settings.difficulty}
         onChange={(value) => update('difficulty', value)}
       />

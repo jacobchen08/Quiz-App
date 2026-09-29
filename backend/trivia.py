@@ -1,3 +1,6 @@
+import html
+import random
+
 import requests
 
 # Settings are passed in with each request (instead of stored in global variables)
@@ -46,3 +49,31 @@ def fetch_questions(amount=10, category="all", difficulty="all", question_type="
         raise TriviaError("Failed to fetch questions")
 
     return data.get("results", [])
+
+
+def prepare_question(raw):
+    """Decode an Open Trivia DB question and fix its answer order.
+
+    Shuffling once on the server means every player sees the options in the same order.
+    The result keeps the correct answer under "correct"; never send that key to a browser
+    before the player has answered.
+    """
+    correct = html.unescape(raw["correct_answer"])
+    if raw["type"] == "multiple":
+        options = [correct] + [html.unescape(a) for a in raw["incorrect_answers"]]
+        random.shuffle(options)
+    else:
+        options = ["True", "False"]
+    return {
+        "question": html.unescape(raw["question"]),
+        "category": html.unescape(raw["category"]),
+        "difficulty": raw.get("difficulty", ""),
+        "type": raw["type"],
+        "options": options,
+        "correct": correct,
+    }
+
+
+def public_question(question):
+    """A prepared question without its correct answer, safe to send before answering."""
+    return {k: question[k] for k in ("question", "category", "difficulty", "type", "options")}

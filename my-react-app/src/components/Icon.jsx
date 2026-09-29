@@ -32,6 +32,19 @@ const paths = {
       <path d="M12 13v4M8.5 20h7M9.5 17h5" />
     </>
   ),
+  share: (
+    <>
+      <path d="M12 15V4M8 8l4-4 4 4" />
+      <path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" />
+    </>
+  ),
+  replay: (
+    <>
+      <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+      <path d="M4 4v4h4" />
+    </>
+  ),
+  bolt: <path d="M13 3L5 13.5h6L10 21l9-11h-6l1-7z" />,
   alert: (
     <>
       <path d="M12 4l9 16H3l9-16z" />

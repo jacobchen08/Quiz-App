@@ -93,6 +93,9 @@ body {
 }
 
 #root {
+  /* boards tilt in 3D as they swing in, which briefly pokes past the edge on phones;
+     clip rather than hidden, so the pinned side boards keep working */
+  overflow-x: clip;
   width: 100%;
   max-width: 880px;
   margin: 0 auto;
@@ -100,6 +103,12 @@ body {
 
   @media (max-width: 640px) {
     padding: 24px 16px 48px;
+  }
+
+  /* wide screens: room for the side boards either side of the quiz */
+  @media (min-width: 1240px) {
+    max-width: 1560px;
+    padding: 44px 40px 72px;
   }
 }
 

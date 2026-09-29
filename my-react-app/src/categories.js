@@ -37,5 +37,25 @@ export function categoryByName(name) {
   return categories.find((c) => c.name === name);
 }
 
+// Difficulty levels: a line colour plus a count of pips, so it never relies on colour alone
+export const difficulties = [
+  { value: 'easy', label: 'Easy', accent: 'teal', pips: 1 },
+  { value: 'medium', label: 'Medium', accent: 'orange', pips: 2 },
+  { value: 'hard', label: 'Hard', accent: 'magenta', pips: 3 },
+];
+
+export function difficultyByValue(value) {
+  return difficulties.find((d) => d.value === value);
+}
+
 // The line colours, also used to tell players apart on the leaderboard
 export const lines = ['blue', 'magenta', 'teal', 'orange', 'violet'];
+
+// What each line carries, for the line map beside the quiz
+export const lineNames = {
+  magenta: 'Entertainment & Celebrities',
+  teal: 'Science & Animals',
+  orange: 'History, Geography & Politics',
+  violet: 'Art & Mythology',
+  blue: 'General, Sports & Vehicles',
+};

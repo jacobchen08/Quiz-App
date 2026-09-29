@@ -2,7 +2,8 @@ import { useState } from 'react';
 import FlapText from './FlapText';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
-import { categoryByName } from '../categories';
+import Pips from './Pips';
+import { categoryByName, difficultyByValue } from '../categories';
 
 // Shows one question with its answer buttons. Used by both solo and multiplayer.
 // `picked` is the answer the player chose (undefined until they answer) and
@@ -39,11 +40,18 @@ function QuestionCard({
   index,
   total,
   category,
+  difficulty,
   question,
   options,
   picked,
   correctAnswer,
   score,
+  scoreSuffix = `/ ${total}`,
+  scoreDigits,
+  scoreLabel = `Score: ${score} / ${total}`,
+  streak = 0,
+  note,
+  finishAction,
   marks,
   onAnswer,
   onPrevious,
@@ -52,6 +60,7 @@ function QuestionCard({
 }) {
   const isAnswered = picked !== undefined;
   const line = categoryByName(category);
+  const level = difficultyByValue(difficulty);
 
   // Clicking an answer only selects it; nothing counts until the player submits.
   // The selection belongs to one question, so moving to another starts fresh.
@@ -89,12 +98,24 @@ function QuestionCard({
             <span className="readout-of">of {total}</span>
           </span>
         </div>
-        <div className="readout readout-end">
-          <span className="readout-label">Score</span>
-          <span className="readout-value">
-            <FlapText text={String(score).padStart(digits, '0')} label={`Score: ${score} / ${total}`} size="lg" />
-            <span className="readout-of">/ {total}</span>
-          </span>
+        <div className="readout-group">
+          <div className={`readout readout-end readout-streak${streak >= 2 ? ' is-hot' : ''}`}>
+            <span className="readout-label">Streak</span>
+            <span className="readout-value">
+              <FlapText text={String(streak).padStart(2, '0')} label={`Streak: ${streak} in a row`} size="lg" />
+            </span>
+          </div>
+          <div className="readout readout-end">
+            <span className="readout-label">Score</span>
+            <span className="readout-value">
+              <FlapText
+                text={String(score).padStart(scoreDigits ?? digits, '0')}
+                label={scoreLabel}
+                size="lg"
+              />
+              <span className="readout-of">{scoreSuffix}</span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -103,11 +124,22 @@ function QuestionCard({
 
         {/* Keyed on the question so each new one slides in from the side you moved towards */}
         <div key={index} className={`question-stage from-${direction}`}>
-        {category && (
-          <p className="category-tag">
-            {line && <RouteBadge code={line.code} line={line.line} size="sm" />}
-            {category}
-          </p>
+        {(category || level) && (
+          <div className="question-meta">
+            {category && (
+              <p className="category-tag">
+                {line && <RouteBadge code={line.code} line={line.line} size="sm" />}
+                {category}
+              </p>
+            )}
+            {level && (
+              <p className="difficulty-tag">
+                <Pips count={level.pips} accent={level.accent} />
+                <span className="sr-only">Difficulty: </span>
+                {level.label}
+              </p>
+            )}
+          </div>
         )}
         <p className="question">{question}</p>
 
@@ -155,7 +187,10 @@ function QuestionCard({
           {isAnswered && correctAnswer !== undefined && (
             <p className={`feedback ${picked === correctAnswer ? 'correct' : 'wrong'}`}>
               <Icon name={picked === correctAnswer ? 'check' : 'cross'} size={20} />
-              {picked === correctAnswer ? 'Correct!' : `Not quite. The answer is ${correctAnswer}.`}
+              <span>
+                {picked === correctAnswer ? 'Correct!' : `Not quite. The answer is ${correctAnswer}.`}
+                {note && <span className="feedback-note"> {note}</span>}
+              </span>
             </p>
           )}
         </div>
@@ -165,10 +200,17 @@ function QuestionCard({
             <Icon name="arrow-left" />
             Previous
           </button>
-          <button className="btn" onClick={onNext} disabled={index >= total - 1}>
-            Next
-            <Icon name="arrow-right" />
-          </button>
+          {finishAction ? (
+            <button className="btn btn-primary btn-finish" onClick={finishAction.onClick}>
+              {finishAction.label}
+              <Icon name="arrow-right" />
+            </button>
+          ) : (
+            <button className="btn" onClick={onNext} disabled={index >= total - 1}>
+              Next
+              <Icon name="arrow-right" />
+            </button>
+          )}
         </div>
       </div>
     </section>

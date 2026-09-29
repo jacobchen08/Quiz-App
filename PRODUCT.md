@@ -25,8 +25,12 @@ Zero friction: no accounts and no install. In solo mode you pick settings and pl
 - Must stay free to run and account-free. Rooms live in memory and are lost when the server restarts. Rooms hold at most 20 players, and names are capped at 20 characters.
 - The server checks multiplayer answers and never sends correct answers to the browser before a player answers. This is an existing behavior, not a headline claim.
 - Room codes use a 5-character alphabet that leaves out 0/O and 1/I.
-- `database/data.sql` is an unfinished sketch. Nothing uses persistence yet.
-- Undecided: the product name, positioning beyond zero friction, and whether solo play gets an end-of-quiz summary or a restart flow (listed as a TODO in `App.jsx`).
+- Three modes: Solo, Daily (the same 10 questions for everyone each UTC day, one go per browser, leaderboard ranked by correct answers then time), and Multiplayer.
+- The daily challenge is the only persisted data: SQLite via `backend/daily.py` (path set by `QUIZZR_DB`). On Render's free plan the disk is temporary, so daily results reset whenever the server restarts. `database/data.sql` is an older, unused sketch.
+- Multiplayer seats are held for 90 seconds after a dropped connection, and players rejoin with a per-tab token. Scoring is 100 points per correct answer plus up to 50 for speed.
+- Every mode ends with a results screen and a copyable share text.
+- Tests: pytest (`backend/tests`) and Vitest (`my-react-app/src/**/*.test.*`), run by GitHub Actions (`.github/workflows/ci.yml`).
+- Name: "Quizzr" is now shown in the app header, but it's still unconfirmed as a brand. Positioning beyond zero friction is undecided.
 
 ## Brand Commitments
 None yet. "Quiz App" is a placeholder name, so don't treat it as a brand or build identity around it.

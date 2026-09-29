@@ -1,21 +1,28 @@
 import asyncio
-import html
 import json
-import random
 import secrets
 import time
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
-from trivia import TriviaError, fetch_questions
+from trivia import TriviaError, fetch_questions, prepare_question, public_question
 
 # Multiplayer flow:
 # 1. POST /api/rooms creates a room and returns its code.
 # 2. Each player opens a WebSocket to /api/ws/{code} and sends {"type": "join", "name": ...}.
-#    The first player to join is the host.
+#    The server answers with {"type": "welcome", "playerId", "token"}. The first player is the host.
 # 3. The host sends {"type": "start", "settings": {...}}; everyone receives the same questions.
 # 4. Players send {"type": "answer", "index": i, "answer": "..."}; the server checks it
 #    (correct answers are never sent to the browser before answering) and broadcasts the scores.
+# 5. {"type": "leave"} gives up your seat straight away.
+#
+# Reconnecting: if a socket drops without "leave" (a phone switching apps, a flaky network),
+# the player's seat is held for RECONNECT_GRACE seconds. Joining again with
+# {"type": "join", "token": ...} puts them back in their seat with their answers and score.
+#
+# Scoring: a correct answer is worth BASE_POINTS plus a speed bonus of up to SPEED_BONUS,
+# measured from the start of the game or the player's previous answer. Streaks count
+# correct answers in a row.
 #
 # Rooms live in memory, so they disappear if the server restarts.
 
@@ -25,17 +32,59 @@ ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I to avoid c
 ROOM_CODE_LENGTH = 5
 MAX_PLAYERS = 20
 EMPTY_ROOM_TTL = 10 * 60  # seconds a created room can sit with nobody in it
+RECONNECT_GRACE = 90  # seconds a disconnected player's seat is held for them
+
+BASE_POINTS = 100
+SPEED_BONUS = 50
+BONUS_FULL_SECONDS = 5  # answer within this long for the whole bonus
+BONUS_ZERO_SECONDS = 20  # after this long there's no bonus left
 
 rooms = {}
+_seat_timers = set()  # keeps pending seat-expiry tasks alive until they run
+
+
+def speed_bonus(elapsed):
+    """Bonus points for a correct answer given `elapsed` seconds after the previous one."""
+    if elapsed <= BONUS_FULL_SECONDS:
+        return SPEED_BONUS
+    if elapsed >= BONUS_ZERO_SECONDS:
+        return 0
+    remaining = (BONUS_ZERO_SECONDS - elapsed) / (BONUS_ZERO_SECONDS - BONUS_FULL_SECONDS)
+    return round(SPEED_BONUS * remaining)
 
 
 class Player:
     def __init__(self, name, ws):
         self.id = secrets.token_hex(4)
+        self.token = secrets.token_urlsafe(16)  # proves who you are when you reconnect
         self.name = name
         self.ws = ws
-        self.score = 0
-        self.answers = {}  # question index -> answer the player picked
+        self.connected = True
+        self.left_at = None
+        self.reset()
+
+    def reset(self):
+        self.score = 0  # points
+        self.correct = 0
+        self.streak = 0
+        self.best_streak = 0
+        self.answers = {}  # question index -> {"answer", "correct", "points"}
+        self.last_answer_at = time.time()
+
+    def record(self, index, answer, correct, now):
+        """Store an answer and return the points it earned."""
+        elapsed = now - self.last_answer_at
+        self.last_answer_at = now
+        points = BASE_POINTS + speed_bonus(elapsed) if correct else 0
+        self.answers[index] = {"answer": answer, "correct": correct, "points": points}
+        if correct:
+            self.score += points
+            self.correct += 1
+            self.streak += 1
+            self.best_streak = max(self.best_streak, self.streak)
+        else:
+            self.streak = 0
+        return points
 
 
 class Room:
@@ -45,10 +94,30 @@ class Room:
         self.host_id = None
         self.status = "lobby"  # lobby -> loading -> playing -> finished
         self.questions = []
+        self.round = 0  # goes up with every game, so clients can tell a new game from a resend
         self.created_at = time.time()
 
+    def connected_players(self):
+        return [p for p in self.players.values() if p.connected]
+
+    def find_by_token(self, token):
+        if not token:
+            return None
+        return next((p for p in self.players.values() if secrets.compare_digest(p.token, str(token))), None)
+
+    def pass_host_if_needed(self):
+        """Keep a connected host whenever anyone is connected."""
+        host = self.players.get(self.host_id)
+        if host is not None and host.connected:
+            return
+        active = self.connected_players()
+        if active:
+            self.host_id = active[0].id
+        elif host is None:
+            self.host_id = next(iter(self.players), None)
+
     def state_message(self):
-        players = sorted(self.players.values(), key=lambda p: (-p.score, p.name.lower()))
+        players = sorted(self.players.values(), key=lambda p: (-p.score, -p.correct, p.name.lower()))
         return {
             "type": "state",
             "code": self.code,
@@ -56,48 +125,57 @@ class Room:
             "hostId": self.host_id,
             "questionCount": len(self.questions),
             "players": [
-                {"id": p.id, "name": p.name, "score": p.score, "answered": len(p.answers)}
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "score": p.score,
+                    "correct": p.correct,
+                    "streak": p.streak,
+                    "bestStreak": p.best_streak,
+                    "answered": len(p.answers),
+                    "connected": p.connected,
+                }
                 for p in players
             ],
         }
 
     def questions_message(self):
-        # Everything except the correct answer
+        # Everything except the correct answers
         return {
             "type": "questions",
-            "questions": [
-                {k: q[k] for k in ("question", "category", "type", "options")}
-                for q in self.questions
+            "round": self.round,
+            "questions": [public_question(q) for q in self.questions],
+        }
+
+    def answers_message(self, player):
+        """A returning player's own answers, so their screen can pick up where it was."""
+        return {
+            "type": "answers",
+            "round": self.round,
+            "results": [
+                {
+                    "index": index,
+                    "answer": a["answer"],
+                    "correct": a["correct"],
+                    "correctAnswer": self.questions[index]["correct"],
+                    "points": a["points"],
+                }
+                for index, a in sorted(player.answers.items())
             ],
         }
 
     def everyone_finished(self):
+        # Only players who are here right now: nobody waits on a seat that's being held
         total = len(self.questions)
-        return total > 0 and all(len(p.answers) == total for p in self.players.values())
+        active = self.connected_players()
+        return total > 0 and bool(active) and all(len(p.answers) == total for p in active)
 
     async def broadcast(self, message):
-        for player in list(self.players.values()):
+        for player in self.connected_players():
             try:
                 await player.ws.send_json(message)
             except Exception:
                 pass  # that player's disconnect is handled by their own socket loop
-
-
-def prepare_question(raw):
-    correct = html.unescape(raw["correct_answer"])
-    if raw["type"] == "multiple":
-        # shuffle once on the server so every player sees the same order
-        options = [correct] + [html.unescape(a) for a in raw["incorrect_answers"]]
-        random.shuffle(options)
-    else:
-        options = ["True", "False"]
-    return {
-        "question": html.unescape(raw["question"]),
-        "category": html.unescape(raw["category"]),
-        "type": raw["type"],
-        "options": options,
-        "correct": correct,
-    }
 
 
 def new_room_code():
@@ -112,6 +190,50 @@ def prune_empty_rooms():
     for code, room in list(rooms.items()):
         if not room.players and now - room.created_at > EMPTY_ROOM_TTL:
             del rooms[code]
+
+
+def remove_player(room, player):
+    room.players.pop(player.id, None)
+    if not room.players:
+        rooms.pop(room.code, None)
+    else:
+        room.pass_host_if_needed()
+
+
+def expire_seat(room, player, now=None):
+    """Give up a disconnected player's seat once the grace period is over. True if removed."""
+    now = time.time() if now is None else now
+    if player.connected or room.players.get(player.id) is not player or player.left_at is None:
+        return False
+    if now - player.left_at < RECONNECT_GRACE:
+        return False
+    remove_player(room, player)
+    return True
+
+
+async def settle(room):
+    """Finish the game if everyone here is done, then tell everyone the new state."""
+    if room.status == "playing" and room.everyone_finished():
+        room.status = "finished"
+    await room.broadcast(room.state_message())
+
+
+async def expire_seat_later(room, player):
+    await asyncio.sleep(RECONNECT_GRACE)
+    if expire_seat(room, player) and room.code in rooms:
+        await settle(room)
+
+
+async def hold_seat(room, player):
+    """The player's socket closed without "leave": keep their seat for a while."""
+    player.connected = False
+    player.left_at = time.time()
+    player.ws = None
+    room.pass_host_if_needed()
+    await settle(room)
+    task = asyncio.create_task(expire_seat_later(room, player))
+    _seat_timers.add(task)
+    task.add_done_callback(_seat_timers.discard)
 
 
 @router.post("/rooms")
@@ -148,9 +270,9 @@ async def start_game(room, settings):
         return
 
     room.questions = [prepare_question(q) for q in raw]
+    room.round += 1
     for player in room.players.values():
-        player.score = 0
-        player.answers = {}
+        player.reset()
     room.status = "playing"
     await room.broadcast(room.questions_message())
     await room.broadcast(room.state_message())
@@ -166,9 +288,7 @@ async def submit_answer(room, player, index, answer):
 
     question = room.questions[index]
     correct = answer == question["correct"]
-    player.answers[index] = answer
-    if correct:
-        player.score += 1
+    points = player.record(index, answer, correct, time.time())
 
     await player.ws.send_json({
         "type": "answer_result",
@@ -176,10 +296,10 @@ async def submit_answer(room, player, index, answer):
         "answer": answer,
         "correct": correct,
         "correctAnswer": question["correct"],
+        "points": points,
+        "streak": player.streak,
     })
-    if room.everyone_finished():
-        room.status = "finished"
-    await room.broadcast(room.state_message())
+    await settle(room)
 
 
 async def handle_message(room, player, message):
@@ -199,49 +319,71 @@ async def receive_message(ws):
     return message if isinstance(message, dict) else {}
 
 
+async def refuse(ws, code, message):
+    await ws.send_json({"type": "error", "code": code, "message": message})
+    await ws.close()
+
+
 @router.websocket("/ws/{code}")
 async def room_socket(ws: WebSocket, code: str):
     await ws.accept()
 
     room = rooms.get(code.upper())
     if room is None:
-        await ws.send_json({"type": "error", "message": "Room not found. Check the code and try again."})
-        await ws.close()
-        return
-    if len(room.players) >= MAX_PLAYERS:
-        await ws.send_json({"type": "error", "message": "That room is full."})
-        await ws.close()
+        await refuse(ws, "room_not_found", "Room not found. Check the code and try again.")
         return
 
-    # First message must be the join message with the player's name
+    # First message must be the join message: a name, plus a token when reconnecting
     try:
         join = await receive_message(ws)
     except WebSocketDisconnect:
         return
-    name = str(join.get("name", "")).strip()[:20] or "Player"
+    if rooms.get(room.code) is not room:  # the room closed while we waited
+        await refuse(ws, "room_not_found", "That room has closed.")
+        return
 
-    player = Player(name, ws)
-    room.players[player.id] = player
-    if room.host_id is None:
-        room.host_id = player.id
+    player = room.find_by_token(join.get("token"))
+    if player is not None:
+        # Back in their held seat; a newer connection replaces an older one
+        old_ws = player.ws
+        player.ws = ws
+        player.connected = True
+        player.left_at = None
+        if old_ws is not None:
+            try:
+                await old_ws.close()
+            except Exception:
+                pass
+    else:
+        if len(room.players) >= MAX_PLAYERS:
+            await refuse(ws, "room_full", "That room is full.")
+            return
+        name = str(join.get("name", "")).strip()[:20] or "Player"
+        player = Player(name, ws)
+        room.players[player.id] = player
+    room.pass_host_if_needed()
 
+    leaving = False
     try:
-        await ws.send_json({"type": "welcome", "playerId": player.id})
+        await ws.send_json({"type": "welcome", "playerId": player.id, "token": player.token})
         if room.status in ("playing", "finished"):
             await ws.send_json(room.questions_message())
+            await ws.send_json(room.answers_message(player))
         await room.broadcast(room.state_message())
 
         while True:
-            await handle_message(room, player, await receive_message(ws))
+            message = await receive_message(ws)
+            if message.get("type") == "leave":
+                leaving = True
+                break
+            await handle_message(room, player, message)
     except WebSocketDisconnect:
         pass
     finally:
-        room.players.pop(player.id, None)
-        if not room.players:
-            rooms.pop(room.code, None)
-        else:
-            if room.host_id == player.id:
-                room.host_id = next(iter(room.players))  # pass host to the next player
-            if room.status == "playing" and room.everyone_finished():
-                room.status = "finished"
-            await room.broadcast(room.state_message())
+        if player.ws is ws:  # skip if a newer connection has taken over this seat
+            if leaving:
+                remove_player(room, player)
+                if room.code in rooms:
+                    await settle(room)
+            else:
+                await hold_seat(room, player)

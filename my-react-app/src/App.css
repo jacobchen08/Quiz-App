@@ -4,6 +4,307 @@
   gap: 28px;
 }
 
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* ---------- Wide screens: side boards on the hall wall ---------- */
+.rail {
+  display: none;
+}
+
+@media (min-width: 1240px) {
+  /* medium-wide: the quiz keeps its full width and the side boards stack in one column
+     beside it, the round board first because it changes as you play */
+  .App {
+    display: grid;
+    grid-template-columns: minmax(0, 880px) 290px;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'header header'
+      'main right'
+      'main left';
+    justify-content: center;
+    column-gap: 36px;
+    row-gap: 28px;
+  }
+}
+
+@media (min-width: 1520px) {
+  /* widest: one column of boards either side of the quiz */
+  .App {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 880px) minmax(250px, 300px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'header header header'
+      'left main right';
+  }
+}
+
+@media (min-width: 1240px) {
+
+  .header {
+    grid-area: header;
+  }
+  .main-col {
+    grid-area: main;
+  }
+  .rail-left {
+    grid-area: left;
+  }
+  .rail-right {
+    grid-area: right;
+  }
+
+  .rail {
+    display: block;
+  }
+
+  .rail-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+    > * {
+      transform-origin: top center;
+      animation: board-hang 620ms var(--ease-settle) backwards;
+    }
+    > :nth-child(2) {
+      animation-delay: 90ms;
+    }
+  }
+
+  .rail-right .rail-inner > * {
+    animation-delay: 120ms;
+  }
+
+  .rail-left .rail-inner {
+    margin-top: 0;
+  }
+}
+
+/* with a rail of its own on each side, a board column stays in view while the quiz scrolls */
+@media (min-width: 1520px) {
+  .rail-inner {
+    position: sticky;
+    top: 24px;
+  }
+  .rail-right .rail-inner > :nth-child(2) {
+    animation-delay: 210ms;
+  }
+}
+
+/* ---------- Answers board: the round as a departures list ---------- */
+.answer-log {
+  position: relative;
+  max-height: min(460px, 52vh);
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--key-edge) transparent;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px 8px 14px;
+  border: 0;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid var(--board-edge);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-settle), color 0.2s;
+
+  li:last-child & {
+    border-bottom: 0;
+  }
+  &:hover {
+    background: var(--row-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: -2px;
+  }
+
+  /* the question on screen right now is lit, like the next departure */
+  &[aria-current='true'] {
+    background: var(--row-hover);
+
+    .log-num {
+      background: var(--signal);
+      color: var(--signal-ink);
+    }
+    .log-text {
+      color: var(--ink);
+    }
+  }
+
+  &.correct .log-mark {
+    color: var(--ok);
+  }
+  &.wrong .log-mark {
+    color: var(--bad);
+  }
+  &.pending .log-mark {
+    color: var(--ink-dim);
+  }
+}
+
+.log-num {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: background 0.2s var(--ease-settle), color 0.2s;
+}
+
+.log-text {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-dim);
+}
+
+.log-mark {
+  display: grid;
+  place-items: center;
+}
+
+.log-empty {
+  margin: 0;
+  padding: 18px 20px 22px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+/* ---------- Line map ---------- */
+.line-map {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 20px;
+    font-size: 15px;
+    line-height: 1.35;
+    color: var(--ink);
+  }
+}
+
+.line-swatch {
+  flex: none;
+  width: 30px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+/* ---------- Round board ---------- */
+.round-stats {
+  margin: 0;
+  padding: 6px 20px 10px;
+
+  div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--board-edge);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  dt {
+    font-family: var(--condensed);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.round-empty {
+  margin: 0;
+  padding: 0 20px 20px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+/* ---------- How to play ---------- */
+.howto {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 18px 20px 22px;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
+    animation: row-in 420ms var(--ease-settle) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+}
+
+.howto-num {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 28px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.55);
+  }
+}
+
 /* ---------- Hall wall: station sign + platform switch ---------- */
 .header {
   display: flex;
@@ -284,6 +585,8 @@
     transition: none;
   }
   .mode-panel > *,
+  .rail-inner > *,
+  .howto li,
   .question-stage *,
   .answer-letter,
   .answer-status,
@@ -594,6 +897,15 @@ input[type='text'] {
   }
 }
 
+/* on the question board the level is a fact, not a choice, so its pips are always fully lit */
+.difficulty-tag {
+  color: var(--ink);
+
+  .pips .on {
+    background: var(--accent);
+  }
+}
+
 /* ---------- Line colours ---------- */
 .route-blue,
 .accent-blue {
@@ -826,11 +1138,22 @@ input[type='text'] {
   }
 }
 
-.category-tag {
+/* category on the left, difficulty on the right, wrapping under each other when narrow */
+.question-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 12px;
+}
+
+.category-tag,
+.difficulty-tag {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 12px;
+  margin: 0;
   font-family: var(--condensed);
   font-size: 14px;
   font-weight: 600;
@@ -853,14 +1176,14 @@ input[type='text'] {
 /* a new question arrives from the side the player moved towards,
    then its answer rows come in one after another like departure lines */
 .question-stage {
-  .category-tag,
+  .question-meta,
   .question {
     animation: stage-in-right 460ms var(--ease-settle) backwards;
   }
   .question {
     animation-delay: 40ms;
   }
-  &.from-left .category-tag,
+  &.from-left .question-meta,
   &.from-left .question {
     animation-name: stage-in-left;
   }
@@ -1410,4 +1733,300 @@ input[type='text'] {
   font-size: 16px;
   font-weight: 600;
   color: var(--ink-dim);
+}
+
+/* ---------- Streak readout on the question board ---------- */
+.readout-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.readout-streak {
+  @media (max-width: 560px) {
+    display: none;
+  }
+
+  &.is-hot .readout-label {
+    color: var(--signal);
+  }
+}
+
+.feedback-note {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.btn-ghost-quiet {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- Results ---------- */
+.results-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin-bottom: 24px;
+}
+
+.results-verdict {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: clamp(24px, 3.2vw, 30px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.results-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px;
+  margin: 0 0 22px;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius-key);
+  background: var(--board-edge);
+  overflow: hidden;
+
+  div {
+    padding: 12px 16px;
+    background: var(--row);
+  }
+  dt {
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  dd {
+    margin: 4px 0 0;
+    font-family: var(--condensed);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+}
+
+.results-stats-compact {
+  margin-bottom: 20px;
+}
+
+.results-note {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+.results-subhead {
+  margin: 26px 0 10px;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.missed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 14px 0;
+    border-top: 1px solid var(--board-edge);
+  }
+}
+
+.missed-question {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink);
+
+  .route {
+    margin-top: 1px;
+  }
+}
+
+.missed-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.missed-answer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding-left: 36px;
+  font-size: 15px;
+
+  .icon {
+    flex: none;
+  }
+  &.is-wrong {
+    color: var(--bad);
+  }
+  &.is-right {
+    color: var(--ok);
+  }
+}
+
+/* the shareable result looks like the text it is: a torn-off slip */
+.share {
+  margin-top: 26px;
+}
+
+.share-card {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px dashed var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--well);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+
+.share-status {
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--board-edge);
+
+  .btn-primary {
+    min-width: 200px;
+  }
+}
+
+/* ---------- Reconnecting ---------- */
+.banner-warn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-color: var(--line-orange);
+
+  .icon {
+    flex: none;
+    color: var(--line-orange);
+  }
+}
+
+.banner-inline {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  color: var(--ink);
+}
+
+.leaderboard li.away .player-name {
+  color: var(--ink-faint);
+}
+
+.badge-away {
+  border-color: var(--line-orange);
+  color: var(--line-orange);
+}
+
+.badge-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-color: var(--line-orange);
+  color: var(--line-orange);
+}
+
+/* ---------- Daily challenge ---------- */
+.daily-date {
+  font-family: var(--condensed);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.daily-lede {
+  max-width: 60ch;
+  margin: 0 0 18px;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.daily-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+
+  .name-field {
+    flex: 1 1 260px;
+  }
+}
+
+.daily-clock-note {
+  margin-top: 12px;
+}
+
+.player-time {
+  min-width: 44px;
+  font-family: var(--condensed);
+  font-size: 17px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--ink);
+}
+
+.board-foot {
+  margin: 0;
+  padding: 12px 24px;
+  border-top: 1px solid var(--board-edge);
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+/* three mode tabs have to fit a phone */
+@media (max-width: 640px) {
+  .mode-tabs button {
+    padding: 0 8px;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+  }
 }

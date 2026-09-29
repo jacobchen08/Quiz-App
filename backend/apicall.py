@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from daily import router as daily_router
 from multiplayer import router as multiplayer_router
 from trivia import TriviaError, fetch_questions
 
@@ -39,6 +40,7 @@ def health():
 
 
 app.include_router(multiplayer_router)
+app.include_router(daily_router)
 
 
 # In production the built React app (npm run build) is served by this same server,
