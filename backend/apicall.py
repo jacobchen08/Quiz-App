@@ -1,8 +1,12 @@
-import requests
-import sqlite3
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from multiplayer import router as multiplayer_router
+from trivia import TriviaError, fetch_questions
 
 app = FastAPI()
 
@@ -17,92 +21,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-num_questions = 10
-type_of_question = "all"
-difficulty = "all"
-category = "all"
-
-
-@app.get("/questions")
-def get_questions():
-    
-#api call to get questions
-
-#sets the url based on the type of question and difficulty selected by the user
-
-    url = f"https://opentdb.com/api.php?amount={num_questions}"
-
-    if(category != "all"):
-        #currently this featrure doesn't work as categories are represented by munbers, functionality
-        #will be added later
-        url += f"&category={category}"
-    if(difficulty != "all"):
-        url += f"&difficulty={difficulty}"
-    if(type_of_question!="all"):
-        url += f"&type={type_of_question}"
-    
-
-    #makes the POST request to the API
-    #checks if the request was successful
-    #if successful, the data is returned
-    #if not successful, an error message is returned
-
-
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("results", [])
-    else:
-        return {"error": "Failed to fetch questions"}
-
-
 
 #returns the questions to the frontend, where it can be retrieved with a GET request
-
-@app.get("/count")
-def change_question_count(num: int):
-    global num_questions
-    #restrict number of questions from being too many, max should be 50
-    if 0 < num < 51:
-        num_questions = num
-    else:
-        return{"error, number out of bounds"}
+#e.g. /api/questions?amount=10&category=9&difficulty=easy&type=multiple
+@app.get("/api/questions")
+def get_questions(amount: int = 10, category: str = "all", difficulty: str = "all", type: str = "all"):
+    try:
+        return fetch_questions(amount, category, difficulty, type)
+    except TriviaError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
 
 
-@app.get("/category")
-def change_category(category_num: int):
-    global category
-    #there's only a certain valid list of categories so I need to restrict this
-    if(9 <= category_num <= 32):
-        category = category_num 
-    else:
-        category = "all"
+# Used by the hosting service to check the server is up
+@app.get("/api/health")
+def health():
+    return {"ok": True}
 
 
-@app.get("/difficulty")
-def change_difficulty(diff: str):
-    global difficulty
-    if(diff == "easy" or diff == "medium" or diff == "hard"):
-        difficulty = diff
-    else:
-        difficulty = "all"
-        #return{"error, invalid difficulty"}
-    
-
-@app.get("/type")
-def change_type(type: str):
-    global type_of_question
-    if(type == "multiple" or type == "boolean"):
-        type_of_question = type
-    else:
-        type_of_question = "all"
+app.include_router(multiplayer_router)
 
 
-
-
-
-
-
-
-
-
+# In production the built React app (npm run build) is served by this same server,
+# so the whole app runs as one service. Must be mounted last so /api routes win.
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "my-react-app" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

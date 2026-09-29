@@ -1,0 +1,132 @@
+{
+  "title": "Choose the visual world",
+  "question": "The roll assigned the Departure Board. Keep it, take the pick or an alternate, keep today's look refined (the category standard), or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Departure Board",
+      "kicker": "THE ROLL",
+      "lineage": "Solari split-flap station boards, and the flip panels of 70s game-show survey boards",
+      "thesis": "Every quiz is a timetable: questions, room codes and scores arrive on clattering split-flap boards.",
+      "palette": ["#121212", "#26241f", "#f1ede4", "#f7c21a", "#d9d6cf"],
+      "materials": ["split-flap tiles", "matte black board", "enamel station signage"],
+      "viewport": "One black board fills the view. It reads NOW BOARDING · 10 QUESTIONS · ANY CATEGORY, with a single yellow Play key. A 5-flap room code slot sits beside it, and the tiles flip in as it loads.",
+      "risk": "Flip motion gets tiring on long text, so it's limited to codes, numbers and short labels. The question text sits still and readable, and reduced-motion is respected.",
+      "raised": [
+        {"from": "challenger-monochrome", "raise": "Signal yellow appears only on 'now': the current question, your leaderboard row, the one primary action."},
+        {"from": "challenger-cassette", "raise": "Every setting is its own labeled switch on the board. Difficulty and type are segmented flap selectors, not dropdowns."},
+        {"from": "challenger-emission", "raise": "Correct, wrong and pending are carried by glyph and form (a ✓ tile, a ✕ tile, a ticking pending flap), never by colour alone."},
+        {"from": "challenger-steprow", "raise": "Question progress is one unbroken row of cells with a lit 'now' cell. Tap any cell to jump."},
+        {"from": "challenger-orizuru", "raise": "Question numbers live in a fixed platform-number column, a strict numbered margin like a platform board."},
+        {"from": "challenger-quarry", "raise": "Boards hang as separate modules on the hall wall with clear gaps between them, never cards nested in cards."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Answer Sheet",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "machine-scored bubble answer sheets and No. 2 pencils",
+      "thesis": "Every question is a row of A–D bubbles you fill in pencil, and the scoring machine marks it.",
+      "palette": ["#fbfbf6", "#d8574a", "#2b2b2b", "#111111"],
+      "materials": ["drop-out red form ink", "graphite fill", "timing marks"],
+      "viewport": "A printed answer form: a name box and settings as form fields at the top, the current question with four big bubbles, and timing marks down the edge.",
+      "risk": "It's the most obvious quiz reference, where most runs in this category would land, and it carries some exam-stress baggage."
+    },
+    {
+      "id": "challenger-monochrome",
+      "label": "Monochrome Product Page",
+      "verdict": "declined",
+      "lineage": "restrained software marketing",
+      "thesis": "A neutral scale with one accent, where every claim is paired with proof.",
+      "palette": ["#fafafa", "#171717", "#737373", "#2563eb"],
+      "materials": ["neutral scale", "hairline outlines"],
+      "viewport": "A two-weight sans on a strict grid, with ghost buttons.",
+      "case": "Loses identification: it reads as the corporate SaaS look you ruled out. It also adds no clarity over the board.",
+      "kept": "The discipline of rationing one accent to the moments that matter.",
+      "risk": "Too corporate for a game.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-monochrome-product-marketing-hero.webp"
+    },
+    {
+      "id": "challenger-cassette",
+      "label": "Cassette Deck Fascia",
+      "verdict": "declined",
+      "lineage": "cassette futurism hi-fi",
+      "thesis": "Settings as chrome toggles, with score as an amber LED ladder.",
+      "palette": ["#c9c9c4", "#d8ccb0", "#1a1a1a", "#ff9a1f"],
+      "materials": ["brushed aluminum", "beige plastic", "amber LEDs"],
+      "viewport": "One fascia with bolted panel zones.",
+      "case": "Players don't recognise hi-fi gear as trivia, and the toggles are clear but gimmicky at quiz scale.",
+      "kept": "Every function gets its own labeled physical control.",
+      "risk": "Retro-gear novelty.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-cassette-futurism-deck-hero.webp"
+    },
+    {
+      "id": "challenger-emission",
+      "label": "Emission-Line Rail",
+      "verdict": "declined",
+      "lineage": "spectrograph plates",
+      "thesis": "State carried by line form (height, dash, doubling) on a charcoal continuum.",
+      "palette": ["#2a2a2c", "#e8e3d8", "#f5c400", "#5aa8ff"],
+      "materials": ["charcoal continuum", "hairline emission lines"],
+      "viewport": "One off-centre rail with the open item blooming above it.",
+      "case": "Too abstract for trivia players, and it costs clarity on the first read.",
+      "kept": "State through form rather than hue, which is exactly what AA needs.",
+      "risk": "Cryptic.",
+      "hero": "https://impeccable.style/worlds/cards/operate-c-emission-line-rail-hero.webp"
+    },
+    {
+      "id": "challenger-steprow",
+      "label": "Drum Machine Step Row",
+      "verdict": "declined",
+      "lineage": "early-80s rhythm machines",
+      "thesis": "The quiz as a 16-step row with a chase light on 'now'.",
+      "palette": ["#2b2b2b", "#e2412f", "#f08a24", "#f2d23c", "#f4f1ea"],
+      "materials": ["candy step keys", "segmented readouts"],
+      "viewport": "The step row as the page's single unbroken line.",
+      "case": "Music gear isn't trivia's world, but the step row is a very clear progress navigator.",
+      "kept": "One unbroken row with a lit 'now' cell.",
+      "risk": "Reads as a music toy.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-drum-machine-step-row-hero.webp"
+    },
+    {
+      "id": "challenger-orizuru",
+      "label": "Orizuru Fold Sequence",
+      "verdict": "declined",
+      "lineage": "origami diagrams",
+      "thesis": "One vermilion sheet folded through numbered steps.",
+      "palette": ["#d8402b", "#f3e9dd", "#1b1b1b", "#c9a227"],
+      "materials": ["washi fiber", "crease lines"],
+      "viewport": "Square diagram with a numbered margin column.",
+      "case": "Unrelated to trivia and slower to parse.",
+      "kept": "The strict numbered margin column.",
+      "risk": "Precious.",
+      "hero": "https://impeccable.style/worlds/cards/paper-folds-pleats-deployable-orizuru-crane-sequence-hero.webp"
+    },
+    {
+      "id": "challenger-quarry",
+      "label": "Cloud Quarry",
+      "verdict": "declined",
+      "lineage": "surreal constructed worlds",
+      "thesis": "Content cut as blocks of weather with blue voids between.",
+      "palette": ["#f4f6f8", "#7fb3e6", "#6b7280", "#c0c6cc"],
+      "materials": ["cumulus blocks", "stencil tally boards"],
+      "viewport": "Sections stacked like cut blocks with deep gaps between them.",
+      "case": "Dreamlike, with no link to trivia. It hurts both identification and clarity.",
+      "kept": "Stacked modules with clear gaps between them.",
+      "risk": "Whimsy over play.",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-cloud-quarry-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": false},
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A clean modern quiz app, executed impeccably. It's the closest to today's look, with the gradients, glows and emoji removed.",
+    "palette": ["#ffffff", "#111827", "#4f46e5", "#e11d48", "#f59e0b", "#10b981"],
+    "materials": ["clean grid", "big colored answer tiles"],
+    "viewport": "A large question with four colored answer tiles and a slim progress bar.",
+    "risk": "It looks like every other quiz app by design."
+  },
+  "steer": true
+}

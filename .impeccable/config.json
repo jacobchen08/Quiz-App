@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "my-react-app/src/App.css"
+        ],
+        "createdAt": "2026-09-29T00:20:35.960Z",
+        "reason": "Claude triage: width/height transitions are on absolutely positioned slide indicators (.mode-sign, .switch-thumb) that reflow nothing but themselves; the only earlier hit was a 2px progress fill that no longer exists"
+      }
+    ]
+  }
+}
