@@ -58,7 +58,7 @@ In production the frontend is a static site on a CDN and the API is a separate D
 - **Timed games run on the server's clock.** Each state message includes the server's time, so every browser counts down to the same deadline. Answers that arrive after it (with a little network grace) are refused, and the speed bonus is measured from when each question opened.
 - **One daily attempt per browser, without accounts.** A random token in `localStorage` identifies a player. Someone could get another attempt by clearing their storage. For a casual game that trade is better than making people sign up, and the leaderboard only lists finished runs.
 - **One database layer, two backends.** The daily challenge's SQL runs on both SQLite, with zero setup for development, and Postgres, which survives restarts in production. CI runs the tests against both.
-- **Built for everyone.** The target is WCAG 2.2 AA. Right and wrong always carry a glyph and a word, never colour alone. Motion respects reduced-motion settings, live changes are announced to screen readers, and automated axe checks run on every push, in light and dark mode.
+- **Built for everyone.** The target is WCAG 2.2 AA. Right and wrong always carry a glyph and a word, never color alone. Motion respects reduced-motion settings, live changes are announced to screen readers, and automated axe checks run on every push, in light and dark mode.
 
 ## Run it locally
 
