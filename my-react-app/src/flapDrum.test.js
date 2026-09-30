@@ -2,10 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { flipPace, flipPath } from './flapDrum';
 
 describe('flipPath', () => {
-  it('rolls numbers through the digit wheel, never through letters', () => {
-    expect(flipPath('9', '0')).toEqual([' ', '0']);
+  it('rolls numbers that count up a step or two through the digit wheel', () => {
+    expect(flipPath('1', '2')).toEqual(['2']);
     expect(flipPath('3', '5')).toEqual(['4', '5']);
-    expect(flipPath(' ', '2')).toEqual(['0', '1', '2']);
+    expect(flipPath('9', '0')).toEqual([' ', '0']);
+  });
+
+  it('flips a digit straight to a value that counts down or jumps, so a ticking clock never spins', () => {
+    expect(flipPath('1', '0')).toEqual(['0']); // 10 -> 09 on the countdown
+    expect(flipPath('0', '9')).toEqual(['9']);
+    expect(flipPath('2', '7')).toEqual(['7']);
+    expect(flipPath(' ', '8')).toEqual(['8']);
   });
 
   it('runs letters through the full drum, skipping ahead on long trips', () => {
