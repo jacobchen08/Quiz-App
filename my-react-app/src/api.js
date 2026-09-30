@@ -1,7 +1,16 @@
 import { apiFetch } from './serverStatus';
 
-// All requests go to the same origin the page was served from.
-// In development, vite.config.js proxies /api to the FastAPI server on port 8000.
+// Where the API lives.
+// - Development, and the single-service deploy: the same origin as the page. In development
+//   vite.config.js proxies /api to the FastAPI server on port 8000.
+// - Frontend hosted as its own static site: set VITE_API_HOST (e.g. quizzr-api.onrender.com)
+//   at build time, and every request goes there instead.
+const API_HOST = (import.meta.env.VITE_API_HOST ?? '').trim();
+const API_ORIGIN = API_HOST ? (API_HOST.includes('://') ? API_HOST : `https://${API_HOST}`).replace(/\/$/, '') : '';
+
+export function apiUrl(path) {
+  return `${API_ORIGIN}${path}`;
+}
 
 export function questionsUrl(settings) {
   const params = new URLSearchParams({
@@ -10,12 +19,12 @@ export function questionsUrl(settings) {
     difficulty: settings.difficulty || 'all',
     type: settings.type || 'all',
   });
-  return `/api/questions?${params}`;
+  return apiUrl(`/api/questions?${params}`);
 }
 
 // Daily challenge. Errors come back as { detail } from FastAPI; turn them into thrown Errors.
 async function dailyRequest(path, options) {
-  const response = await apiFetch(`/api/daily${path}`, options); // throws a readable Error when it can't connect
+  const response = await apiFetch(apiUrl(`/api/daily${path}`), options); // throws a readable Error when it can't connect
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = typeof data.detail === 'string' ? data.detail : 'Something went wrong. Try again.';
@@ -36,6 +45,6 @@ export const daily = {
 };
 
 export function roomSocketUrl(code) {
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${protocol}://${window.location.host}/api/ws/${code}`;
+  const origin = API_ORIGIN || window.location.origin;
+  return `${origin.replace(/^http/, 'ws')}/api/ws/${code}`;
 }

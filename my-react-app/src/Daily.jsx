@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { daily } from './api';
 import QuestionCard from './components/QuestionCard';
 import ResultsBoard from './components/ResultsBoard';
@@ -106,6 +106,17 @@ function Daily({ onProgress }) {
   const [showResults, setShowResults] = useState(false);
   const [board, setBoard] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [justStarted, setJustStarted] = useState(0); // bumps on Start, to bring question 1 into view
+  const stageRef = useRef(null);
+
+  useEffect(() => {
+    if (justStarted === 0) return;
+    const board = stageRef.current?.querySelector('.question-board');
+    if (!board) return;
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    board.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
+    board.focus({ preventScroll: true });
+  }, [justStarted]);
 
   const refreshBoard = useCallback(() => {
     daily.leaderboard(token).then(setBoard).catch(() => {});
@@ -156,6 +167,7 @@ function Daily({ onProgress }) {
       setQuestions(data.questions);
       applyPlayer(data.player, data.questions);
       setStatus('playing');
+      setJustStarted((n) => n + 1);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -316,6 +328,7 @@ function Daily({ onProgress }) {
       )}
 
       {status === 'playing' && current && !(finished && showResults) && (
+        <div ref={stageRef} className="stage">
         <QuestionCard
           index={currentIndex}
           total={questions.length}
@@ -339,6 +352,7 @@ function Daily({ onProgress }) {
           onNext={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
           onJump={setCurrentIndex}
         />
+        </div>
       )}
 
       {status === 'intro' && (

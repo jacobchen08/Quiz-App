@@ -48,6 +48,8 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const settingsRef = useRef(null);
+  const stageRef = useRef(null);
+  const [round, setRound] = useState(0); // counts generated rounds, to bring each new one into view
 
   // Time limit for this round (0 = none), fixed when the questions are generated
   const [timeLimit, setTimeLimit] = useState(0);
@@ -135,6 +137,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
         setTimeLimit(limit);
         setDeadline(limit > 0 ? Date.now() + limit * 1000 : null);
         setShowResults(false);
+        setRound((r) => r + 1);
       })
       .catch((error) => {
         console.error('Error:', error);
@@ -142,6 +145,17 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       })
       .finally(() => setLoading(false));
   }
+
+  // A new round: bring its first question into view and put focus on it, since on a phone
+  // it lands below the settings, out of sight
+  useEffect(() => {
+    if (round === 0) return;
+    const board = stageRef.current?.querySelector('.question-board');
+    if (!board) return;
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    board.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' });
+    board.focus({ preventScroll: true });
+  }, [round]);
 
   function changeSettings() {
     settingsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -167,7 +181,8 @@ function Solo({ settings, onSettingsChange, onProgress }) {
           <Settings settings={settings} onChange={onSettingsChange} />
           <div className="board-actions">
             <p className="load-hint">Questions come from the Open Trivia Database and can take a few seconds to load.</p>
-            <button className="btn btn-primary" onClick={generate} disabled={loading}>
+            {/* yellow marks the one thing to do now: only before there are questions */}
+            <button className={total === 0 ? 'btn btn-primary' : 'btn'} onClick={generate} disabled={loading}>
               {loading ? 'Loading…' : total > 0 ? 'Generate New Questions' : 'Generate Questions'}
             </button>
           </div>
@@ -220,6 +235,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       )}
 
       {total > 0 && !showResults && (
+        <div ref={stageRef} className="stage">
         <QuestionCard
           index={currentIndex}
           total={total}
@@ -253,6 +269,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
           onNext={() => setCurrentIndex((i) => Math.min(total - 1, i + 1))}
           onJump={setCurrentIndex}
         />
+        </div>
       )}
     </>
   );

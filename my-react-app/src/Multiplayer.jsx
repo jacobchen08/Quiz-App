@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { roomSocketUrl } from './api';
+import { apiUrl, roomSocketUrl } from './api';
 import { apiFetch, track } from './serverStatus';
 import Settings, { SettingsSummary } from './components/Settings';
 import QuestionCard from './components/QuestionCard';
@@ -301,7 +301,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     setError('');
     setPhase('connecting');
     try {
-      const response = await apiFetch('/api/rooms', { method: 'POST' });
+      const response = await apiFetch(apiUrl('/api/rooms'), { method: 'POST' });
       const data = await response.json();
       seatRef.current = null;
       openSocket(data.code, name.trim());
@@ -362,6 +362,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const inRoom = (phase === 'room' || phase === 'reconnecting') && room;
   if (!inRoom) {
     const connecting = phase === 'connecting';
+    const codeComplete = codeInput.trim().length === 5;
     return (
       <section className="board" aria-labelledby="mp-title">
         <div className="board-head">
@@ -387,7 +388,8 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
             <div className="join-option">
               <h3 className="join-heading">Start a new room</h3>
               <p className="muted-text">You'll be the host and pick the quiz settings.</p>
-              <button className="btn btn-primary" onClick={createRoom} disabled={connecting}>
+              {/* one yellow key at a time: Join takes over once a whole code is typed */}
+              <button className={codeComplete ? 'btn' : 'btn btn-primary'} onClick={createRoom} disabled={connecting}>
                 {connecting ? 'Connecting…' : 'Create room'}
               </button>
             </div>
@@ -405,6 +407,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
                   autoComplete="off"
                   spellCheck="false"
                   aria-label="Room code"
+                  aria-describedby="code-caption"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
@@ -417,7 +420,8 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
                   ))}
                 </span>
               </div>
-              <button className="btn btn-primary" onClick={joinRoom} disabled={connecting}>
+              <p className="code-caption" id="code-caption">The 5-letter room code from the host</p>
+              <button className={codeComplete ? 'btn btn-primary' : 'btn'} onClick={joinRoom} disabled={connecting}>
                 {connecting ? 'Connecting…' : 'Join room'}
               </button>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import FlapText from './FlapText';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
@@ -129,15 +129,55 @@ function QuestionCard({
   }
 
   const isLast = index >= total - 1;
+  const canAnswer = !isAnswered && !closed;
+  const canGoBack = !locked && index > 0;
+  const forward = finishAction?.onClick ?? (!locked && !isLast ? onNext : null);
+
+  // Keyboard play: A–D or 1–4 choose, Enter submits, arrows (or N / P) move between questions.
+  // Every mode keeps its board mounted, so only the one on screen listens.
+  const boardRef = useRef(null);
+  const keys = useRef(null);
+  useEffect(() => {
+    keys.current = { canAnswer, options, selected, canGoBack, forward, onAnswer, onPrevious, index };
+  });
+  useEffect(() => {
+    function onKeyDown(event) {
+      const board = boardRef.current;
+      if (!board || board.closest('[hidden]')) return; // a board on a tab that isn't showing
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (target.closest?.('input, select, textarea, [contenteditable="true"]')) return;
+      const k = keys.current;
+      const key = event.key.toLowerCase();
+      const choice = 'abcd'.indexOf(key) !== -1 ? 'abcd'.indexOf(key) : '1234'.indexOf(key);
+
+      if (choice !== -1 && k.canAnswer && choice < k.options.length) {
+        event.preventDefault();
+        setSelection({ index: k.index, option: k.options[choice] });
+      } else if (key === 'enter' && k.canAnswer && k.selected !== null && !target.closest?.('button, a')) {
+        event.preventDefault(); // a focused button's own Enter still just presses that button
+        k.onAnswer(k.selected);
+      } else if ((key === 'arrowright' || key === 'n') && k.forward) {
+        event.preventDefault();
+        k.forward();
+      } else if ((key === 'arrowleft' || key === 'p') && k.canGoBack) {
+        event.preventDefault();
+        k.onPrevious();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
-    <section className="board" aria-label={`Question ${index + 1} of ${total}`}>
+    <section className="board question-board" ref={boardRef} tabIndex={-1} aria-label={`Question ${index + 1} of ${total}`}>
       <div className="board-head quiz-head">
         <div className="readout">
           <span className="readout-label">Question</span>
           <span className="readout-value">
             <FlapText text={String(index + 1).padStart(digits, '0')} label={`Question ${index + 1}`} size="lg" />
-            <span className="readout-of">of {total}</span>
+            <span className="readout-slash" aria-hidden="true">/</span>
+            <FlapText text={String(total).padStart(digits, '0')} label={'of ' + total} size="lg" />
           </span>
         </div>
         <div className="readout-group">
@@ -234,6 +274,10 @@ function QuestionCard({
             </button>
           </div>
         )}
+
+        <p className="key-hint" aria-hidden="true">
+          <kbd>A</kbd>–<kbd>D</kbd> choose · <kbd>Enter</kbd> submit · <kbd>←</kbd> <kbd>→</kbd> move
+        </p>
 
         <div className="feedback-slot" role="status">
           {timedOut && correctAnswer !== undefined && (

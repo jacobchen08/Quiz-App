@@ -2204,3 +2204,274 @@ input[type='text'] {
     margin-left: auto;
   }
 }
+
+/* ---------- Keyboard shortcut hint ---------- */
+.key-hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+
+  kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    border: 1px solid var(--key-edge);
+    border-radius: 3px;
+    background: var(--key);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* no keyboard to speak of on phones and tablets */
+  @media (hover: none) and (pointer: coarse) {
+    display: none;
+  }
+}
+
+/* ======================================================================
+   Finish-review fixes
+   ====================================================================== */
+
+/* ---------- The station sign: an enamel plate with the name and the mode switch ---------- */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
+
+  > p {
+    max-width: 60ch;
+    text-align: left;
+  }
+}
+
+.sign {
+  --enamel: #f1ede4; /* the same off-white enamel by day and by night: it's a painted object */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  padding: 16px 16px 16px 28px;
+  border-radius: var(--radius-board);
+  background: var(--enamel);
+  /* the painted rule inset from the plate's edge, then the plate's shadow on the wall */
+  box-shadow:
+    inset 0 0 0 5px var(--enamel),
+    inset 0 0 0 7px var(--board),
+    var(--shadow-board);
+
+  h1 {
+    margin: 0;
+    font-family: var(--condensed);
+    font-size: clamp(40px, 6vw, 60px);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--board);
+  }
+
+  .mode-tabs {
+    margin-top: 0;
+
+    button {
+      border-color: color-mix(in srgb, var(--board) 30%, transparent);
+      color: var(--board);
+
+      &:hover:not([aria-selected='true']) {
+        background: color-mix(in srgb, var(--board) 8%, transparent);
+      }
+      &[aria-selected='true'] {
+        border-color: var(--board);
+        color: var(--ink);
+      }
+      &:focus-visible {
+        outline-color: var(--board);
+      }
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 14px;
+
+    h1 {
+      padding-left: 6px;
+    }
+    .mode-tabs {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+/* ---------- Results: numbers as departure rows, not tiles ---------- */
+.results-stats {
+  display: block;
+  gap: 0;
+  border: 0;
+  border-top: 1px solid var(--board-edge);
+  border-radius: 0;
+  background: none;
+
+  div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 2px;
+    background: none;
+    border-bottom: 1px solid var(--board-edge);
+  }
+  dd {
+    margin: 0;
+    font-size: 22px;
+  }
+}
+
+/* ---------- Missed questions: the same rows as the Answers board ---------- */
+.missed li {
+  padding: 14px 0 16px;
+}
+
+.missed-question .missed-num {
+  min-width: 28px;
+  height: 26px;
+  font-size: 15px;
+}
+
+.missed-answers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 38px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+    padding-left: 0;
+  }
+}
+
+.missed-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--row);
+
+  dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  dd {
+    margin: 0;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  &.is-wrong {
+    border-color: color-mix(in srgb, var(--bad) 55%, var(--key-edge));
+    dt {
+      color: var(--bad);
+    }
+  }
+  &.is-right {
+    border-color: color-mix(in srgb, var(--ok) 55%, var(--key-edge));
+    dt {
+      color: var(--ok);
+    }
+  }
+}
+
+/* ---------- The share slip: a printed ticket, marks as tiles ---------- */
+.share-card {
+  padding: 18px 20px;
+  border: 1px solid var(--board-edge);
+  border-top: 4px solid var(--signal);
+  background: var(--row);
+  white-space: normal;
+
+  p {
+    margin: 0;
+  }
+  .share-title {
+    font-family: var(--condensed);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .share-line {
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+}
+
+.share-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid var(--key-edge);
+  background: var(--tile-bottom);
+
+  &.correct {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+  &.wrong {
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+}
+
+/* ---------- Question number as a full platform readout: 01 / 10 ---------- */
+.readout-slash {
+  font-family: var(--condensed);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+/* the board takes focus when a round starts; it isn't a control, so no focus ring */
+.question-board:focus {
+  outline: none;
+}
+
+/* on wide screens the Your round board already shows the streak */
+@media (min-width: 1240px) {
+  .readout-streak {
+    display: none;
+  }
+}
+
+.code-caption {
+  margin: -2px 0 4px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}

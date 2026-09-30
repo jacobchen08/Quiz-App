@@ -1,8 +1,44 @@
-# Render Blueprint: lets Render set up the service from this file (render.com → New → Blueprint)
+# Render Blueprint (render.com -> New -> Blueprint): two services from this repo.
+#
+# - quizzr: the React app as a static site on Render's CDN. It loads instantly even while
+#   the API is asleep, so visitors see the app (and its "waking the server up" notice)
+#   straight away instead of a blank tab.
+# - quizzr-api: the FastAPI server (Docker). Each service learns the other's address
+#   automatically through fromService below.
+#
+# One value to fill in by hand after the first deploy: DATABASE_URL on quizzr-api, set to a
+# Postgres connection string (a free Neon or Supabase database). Without it the daily
+# challenge falls back to SQLite, which Render's free plan wipes on every restart.
 services:
   - type: web
-    name: quiz-app
+    name: quizzr-api
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # entered in the dashboard; never committed
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: quizzr
+          property: host
+
+  - type: web
+    name: quizzr
+    runtime: static
+    rootDir: my-react-app
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_HOST
+        fromService:
+          type: web
+          name: quizzr-api
+          property: host
+    headers:
+      # Built files have content hashes in their names, so they can be cached for good
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

@@ -2,11 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quiz App</title>
+    <title>Quizzr: trivia on a departure board</title>
+    <meta
+      name="description"
+      content="Play trivia solo, take the daily challenge with its leaderboard, or start a live multiplayer room and share the code. No sign-up."
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#141413" />
+
+    <!-- How the link looks when it's shared in chats and on social sites -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Quizzr" />
+    <meta property="og:title" content="Quizzr: trivia on a departure board" />
+    <meta
+      property="og:description"
+      content="Solo quizzes, a daily challenge with a leaderboard, and live multiplayer rooms. No sign-up."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The word QUIZZR on split-flap tiles of a black departure board" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
+    <noscript>Quizzr needs JavaScript to run.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

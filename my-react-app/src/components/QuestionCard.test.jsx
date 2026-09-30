@@ -114,6 +114,65 @@ describe('QuestionCard', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it('plays from the keyboard: a letter chooses, Enter submits', async () => {
+    const user = userEvent.setup();
+    const { onAnswer } = renderCard();
+    await user.keyboard('c');
+    expect(screen.getByRole('button', { name: /1991/ })).toHaveAttribute('aria-pressed', 'true');
+    await user.keyboard('2');
+    expect(screen.getByRole('button', { name: /1989/ })).toHaveAttribute('aria-pressed', 'true');
+    await user.keyboard('{Enter}');
+    expect(onAnswer).toHaveBeenCalledWith('1989');
+  });
+
+  it('moves between questions with the arrow keys, but not while locked', async () => {
+    const user = userEvent.setup();
+    const onNext = vi.fn();
+    const onPrevious = vi.fn();
+    const { rerender } = renderCard({ index: 1, onNext, onPrevious });
+    await user.keyboard('{ArrowRight}{ArrowLeft}');
+    expect(onNext).toHaveBeenCalledOnce();
+    expect(onPrevious).toHaveBeenCalledOnce();
+
+    rerender(
+      <QuestionCard
+        index={1}
+        total={3}
+        question="Locked"
+        options={['x', 'y']}
+        marks={[]}
+        score={0}
+        locked
+        onAnswer={() => {}}
+        onNext={onNext}
+        onPrevious={onPrevious}
+      />
+    );
+    await user.keyboard('{ArrowRight}{ArrowLeft}');
+    expect(onNext).toHaveBeenCalledOnce();
+    expect(onPrevious).toHaveBeenCalledOnce();
+  });
+
+  it('ignores shortcuts on a board whose tab is hidden', async () => {
+    const user = userEvent.setup();
+    const onAnswer = vi.fn();
+    render(
+      <div hidden>
+        <QuestionCard
+          index={0}
+          total={1}
+          question="Hidden"
+          options={['x', 'y']}
+          marks={[]}
+          score={0}
+          onAnswer={onAnswer}
+        />
+      </div>
+    );
+    await user.keyboard('a{Enter}');
+    expect(onAnswer).not.toHaveBeenCalled();
+  });
+
   it('jumps to a question from the step row', async () => {
     const user = userEvent.setup();
     const onJump = vi.fn();

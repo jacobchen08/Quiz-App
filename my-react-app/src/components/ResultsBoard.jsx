@@ -66,20 +66,22 @@ function ResultsBoard({ title = 'Your results', correct, total, stats = [], miss
                     {line && <RouteBadge code={line.code} line={line.line} size="sm" />}
                     <span>{m.question}</span>
                   </p>
-                  <p className="missed-answer is-wrong">
-                    <Icon name="cross" size={16} />
-                    <span>
-                      <span className="sr-only">Your answer: </span>
-                      {m.answer ?? 'Not answered'}
-                    </span>
-                  </p>
-                  <p className="missed-answer is-right">
-                    <Icon name="check" size={16} />
-                    <span>
-                      <span className="sr-only">Correct answer: </span>
-                      {m.correctAnswer}
-                    </span>
-                  </p>
+                  <dl className="missed-answers">
+                    <div className="missed-answer is-wrong">
+                      <dt>
+                        <Icon name="cross" size={14} />
+                        {m.answer === undefined ? 'No answer' : 'Your answer'}
+                      </dt>
+                      <dd>{m.answer ?? 'Not answered'}</dd>
+                    </div>
+                    <div className="missed-answer is-right">
+                      <dt>
+                        <Icon name="check" size={14} />
+                        Correct
+                      </dt>
+                      <dd>{m.correctAnswer}</dd>
+                    </div>
+                  </dl>
                 </li>
               );
             })}
