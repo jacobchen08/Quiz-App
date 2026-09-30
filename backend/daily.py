@@ -1,15 +1,14 @@
 import json
-import os
-import sqlite3
 import threading
 import time
-from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+import database
+import logs
+from ratelimit import RateLimiter, limited
 from trivia import TriviaError, fetch_questions, prepare_question, public_question
 
 # Daily challenge: everyone gets the same questions each day (UTC), like Wordle.
@@ -22,30 +21,33 @@ from trivia import TriviaError, fetch_questions, prepare_question, public_questi
 # There are no accounts. The browser makes up a random token and keeps it, and one token
 # gets one go per day. Correct answers only leave the server once that question is answered.
 #
-# Results are kept in SQLite. Set QUIZZR_DB to choose where the file lives; on hosts with a
-# temporary disk (like Render's free plan) it resets whenever the server restarts.
+# Results are kept in Postgres when DATABASE_URL is set, or a SQLite file otherwise;
+# see database.py.
 
 router = APIRouter(prefix="/api/daily")
 
-DB_PATH = os.environ.get("QUIZZR_DB", str(Path(__file__).resolve().parent / "quizzr.db"))
 DAILY_QUESTIONS = 10
 LEADERBOARD_SIZE = 20
 
 _fetch_lock = threading.Lock()  # so two early visitors don't both fetch today's questions
 
+# Generous for a person playing, tight for a script guessing answers
+start_limit = RateLimiter(limit=10, window=60)
+answer_limit = RateLimiter(limit=60, window=60)
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS daily_sets (
     date        TEXT PRIMARY KEY,
     questions   TEXT NOT NULL,
-    created_at  REAL NOT NULL
+    created_at  DOUBLE PRECISION NOT NULL
 );
 CREATE TABLE IF NOT EXISTS daily_players (
     date        TEXT NOT NULL,
     token       TEXT NOT NULL,
     name        TEXT NOT NULL,
     correct     INTEGER NOT NULL DEFAULT 0,
-    started_at  REAL NOT NULL,
-    finished_at REAL,
+    started_at  DOUBLE PRECISION NOT NULL,
+    finished_at DOUBLE PRECISION,
     PRIMARY KEY (date, token)
 );
 CREATE TABLE IF NOT EXISTS daily_answers (
@@ -54,7 +56,7 @@ CREATE TABLE IF NOT EXISTS daily_answers (
     idx         INTEGER NOT NULL,
     answer      TEXT NOT NULL,
     correct     INTEGER NOT NULL,
-    answered_at REAL NOT NULL,
+    answered_at DOUBLE PRECISION NOT NULL,
     PRIMARY KEY (date, token, idx)
 );
 """
@@ -64,16 +66,8 @@ def today():
     return datetime.now(timezone.utc).date().isoformat()
 
 
-@contextmanager
 def db():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.executescript(SCHEMA)
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
+    return database.connect(SCHEMA)
 
 
 def load_questions(conn, date):
@@ -100,7 +94,7 @@ def todays_questions(date):
         questions = [prepare_question(q) for q in raw]
         with db() as conn:
             conn.execute(
-                "INSERT OR IGNORE INTO daily_sets (date, questions, created_at) VALUES (?, ?, ?)",
+                "INSERT INTO daily_sets (date, questions, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
                 (date, json.dumps(questions), time.time()),
             )
             return load_questions(conn, date)
@@ -181,7 +175,7 @@ def get_daily(token: str = ""):
     }
 
 
-@router.post("/start")
+@router.post("/start", dependencies=[Depends(limited(start_limit))])
 def start_daily(body: StartBody):
     date = today()
     questions = todays_questions(date)
@@ -189,7 +183,7 @@ def start_daily(body: StartBody):
     with db() as conn:
         # Starting twice just resumes: the clock keeps its original start time
         conn.execute(
-            "INSERT OR IGNORE INTO daily_players (date, token, name, started_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO daily_players (date, token, name, started_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
             (date, body.token, name, time.time()),
         )
         player = player_view(conn, date, body.token, questions)
@@ -201,7 +195,7 @@ def start_daily(body: StartBody):
     }
 
 
-@router.post("/answer")
+@router.post("/answer", dependencies=[Depends(limited(answer_limit))])
 def answer_daily(body: AnswerBody):
     date = today()
     questions = todays_questions(date)
@@ -221,12 +215,12 @@ def answer_daily(body: AnswerBody):
                 "INSERT INTO daily_answers (date, token, idx, answer, correct, answered_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (date, body.token, body.index, body.answer, int(correct), now),
             )
-        except sqlite3.IntegrityError:
+        except database.integrity_errors():
             raise HTTPException(status_code=409, detail="You've already answered that question.")
 
         answered = conn.execute(
-            "SELECT COUNT(*) FROM daily_answers WHERE date = ? AND token = ?", (date, body.token)
-        ).fetchone()[0]
+            "SELECT COUNT(*) AS n FROM daily_answers WHERE date = ? AND token = ?", (date, body.token)
+        ).fetchone()["n"]
         conn.execute(
             """
             UPDATE daily_players
@@ -237,6 +231,8 @@ def answer_daily(body: AnswerBody):
             (int(correct), answered, len(questions), now, date, body.token),
         )
         player = player_view(conn, date, body.token, questions)
+    if player["finished"] and answered == len(questions):
+        logs.log_event("daily_finished", date=date, correct=player["correct"], seconds=player["seconds"], rank=player["rank"])
 
     return {
         "index": body.index,

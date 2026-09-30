@@ -3,7 +3,10 @@ import json
 import secrets
 import time
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+
+import logs
+from ratelimit import RateLimiter, limited
 
 from trivia import TriviaError, fetch_questions, prepare_question, public_question
 
@@ -49,6 +52,12 @@ BONUS_ZERO_SECONDS = 20  # after this long there's no bonus left
 TIMER_CHOICES = {10, 20, 30}  # seconds per question in a timed game
 REVEAL_SECONDS = 3  # pause on the revealed answer before the next question opens
 ANSWER_GRACE = 0.75  # seconds of network delay forgiven after a deadline
+
+# Abuse limits: every legitimate message is tiny, and nobody needs more than a few a second
+MAX_MESSAGE_CHARS = 2000
+MESSAGES_PER_WINDOW = 40
+MESSAGE_WINDOW = 10  # seconds
+room_limit = RateLimiter(limit=10, window=60)  # rooms one address can create per minute
 
 rooms = {}
 _seat_timers = set()  # keeps pending seat-expiry tasks alive until they run
@@ -253,6 +262,7 @@ async def settle(room):
                 return  # close_question sends the new state
         elif room.everyone_finished():
             room.status = "finished"
+            logs.log_event("game_finished", code=room.code, players=len(room.players))
     await room.broadcast(room.state_message())
 
 
@@ -314,6 +324,7 @@ async def advance_after(room, index):
         await open_question(room, index + 1)
     else:
         room.status = "finished"
+        logs.log_event("game_finished", code=room.code, players=len(room.players), timed=True)
         room.current = room.question_phase = room.deadline = None
         room.clock_task = None
         await room.broadcast(room.state_message())
@@ -369,11 +380,12 @@ async def hold_seat(room, player):
     task.add_done_callback(_seat_timers.discard)
 
 
-@router.post("/rooms")
+@router.post("/rooms", dependencies=[Depends(limited(room_limit, "You're creating rooms too quickly. Wait a minute and try again."))])
 def create_room():
     prune_empty_rooms()
     room = Room(new_room_code())
     rooms[room.code] = room
+    logs.log_event("room_created", code=room.code, open_rooms=len(rooms))
     return {"code": room.code}
 
 
@@ -411,6 +423,9 @@ async def start_game(room, settings):
     for player in room.players.values():
         player.reset()
     room.status = "playing"
+    logs.log_event(
+        "game_started", code=room.code, players=len(room.players), questions=len(room.questions), timer=room.time_limit
+    )
     await room.broadcast(room.questions_message())
     if room.time_limit:
         await open_question(room, 0)  # sends the state with the first deadline
@@ -464,8 +479,11 @@ async def handle_message(room, player, message):
 
 
 async def receive_message(ws):
+    text = await ws.receive_text()
+    if len(text) > MAX_MESSAGE_CHARS:
+        return {}  # far bigger than any real message: ignore it
     try:
-        message = json.loads(await ws.receive_text())
+        message = json.loads(text)
     except ValueError:
         return {}
     return message if isinstance(message, dict) else {}
@@ -523,11 +541,14 @@ async def room_socket(ws: WebSocket, code: str):
             await ws.send_json(room.answers_message(player))
         await room.broadcast(room.state_message())
 
+        flood = RateLimiter(limit=MESSAGES_PER_WINDOW, window=MESSAGE_WINDOW)
         while True:
             message = await receive_message(ws)
             if message.get("type") == "leave":
                 leaving = True
                 break
+            if not flood.allow(player.id):
+                continue  # a flood of messages: drop the extras rather than let one socket hog the room
             await handle_message(room, player, message)
     except WebSocketDisconnect:
         pass

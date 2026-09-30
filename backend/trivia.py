@@ -1,4 +1,5 @@
 import html
+import os
 import random
 import time
 
@@ -28,6 +29,10 @@ def fetch_questions(amount=10, category="all", difficulty="all", question_type="
         amount = 10
     #restrict number of questions from being too many, max should be 50
     amount = max(1, min(amount, 50))
+
+    # End-to-end tests run without the internet and need answers they can predict
+    if os.environ.get("QUIZZR_OFFLINE_TRIVIA") == "1":
+        return offline_questions(amount)
 
     url = f"https://opentdb.com/api.php?amount={amount}"
 
@@ -91,3 +96,19 @@ def prepare_question(raw):
 def public_question(question):
     """A prepared question without its correct answer, safe to send before answering."""
     return {k: question[k] for k in ("question", "category", "difficulty", "type", "options")}
+
+
+def offline_questions(amount):
+    """Predictable questions for end-to-end tests (QUIZZR_OFFLINE_TRIVIA=1): the answer to
+    "Test question N" is always "Right N", and it's always one of four options."""
+    return [
+        {
+            "type": "multiple",
+            "difficulty": ("easy", "medium", "hard")[i % 3],
+            "category": "General Knowledge",
+            "question": f"Test question {i + 1}",
+            "correct_answer": f"Right {i + 1}",
+            "incorrect_answers": [f"Wrong {i + 1}a", f"Wrong {i + 1}b", f"Wrong {i + 1}c"],
+        }
+        for i in range(amount)
+    ]

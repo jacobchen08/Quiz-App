@@ -1,10 +1,11 @@
-import sqlite3
+import os
 
 import pytest
 from fastapi.testclient import TestClient
 
 import apicall
 import daily
+import database
 from conftest import raw_question
 
 # Ten true/false questions: even-numbered ones are "True", odd ones "False"
@@ -24,9 +25,14 @@ def client(tmp_path, monkeypatch):
         fetches.append(amount)
         return QUESTIONS
 
-    monkeypatch.setattr(daily, "DB_PATH", str(tmp_path / "daily.db"))
+    monkeypatch.setattr(database, "DB_PATH", str(tmp_path / "daily.db"))
+    monkeypatch.setattr(database, "DATABASE_URL", os.environ.get("TEST_DATABASE_URL", ""))
     monkeypatch.setattr(daily, "fetch_questions", fake_fetch)
     monkeypatch.setattr(daily, "today", lambda: "2026-01-01")
+    if database.uses_postgres():
+        # One Postgres database serves every test (CI sets TEST_DATABASE_URL), so start each one empty
+        with database.connect(daily.SCHEMA) as conn:
+            conn.execute("TRUNCATE daily_sets, daily_players, daily_answers")
     with TestClient(apicall.app) as c:
         c.fetches = fetches
         yield c
@@ -100,7 +106,7 @@ def test_leaderboard_ranks_most_correct_then_fastest(client):
         play(client, token, answers)
 
     # Make the times deterministic: Slow took 90s, Quick 30s, Half 10s
-    with sqlite3.connect(daily.DB_PATH) as conn:
+    with database.connect(daily.SCHEMA) as conn:
         for token, seconds in [("token-slow-perfect", 90), ("token-quick-perfect", 30), ("token-half", 10)]:
             conn.execute(
                 "UPDATE daily_players SET started_at = finished_at - ? WHERE token = ?", (seconds, token)
