@@ -72,6 +72,48 @@ describe('QuestionCard', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it('counts down a timed question and locks the navigation', () => {
+    renderCard({
+      locked: true,
+      countdown: { deadline: Date.now() + 8000, limit: 10, phase: 'open' },
+    });
+    expect(screen.getByText('8 seconds left')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Previous/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Next/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Everyone is on this question together.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Question 2' })).toBeDisabled();
+  });
+
+  it("shows the answer when time runs out before you answer", () => {
+    renderCard({
+      locked: true,
+      closed: true,
+      marks: ['timeout', undefined, undefined],
+      countdown: { deadline: Date.now() - 500, limit: 10, phase: 'reveal' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent("Time's up. The answer is 1989.");
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Submit answer' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /1987/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Question 1, ran out of time' })).toBeInTheDocument();
+    expect(screen.getByText('Next question coming up…')).toBeInTheDocument();
+  });
+
+  it('lets a solo player move on themselves once a timed question is done', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    renderCard({
+      locked: true,
+      picked: '1989',
+      marks: ['correct', undefined, undefined],
+      countdown: { deadline: Date.now() + 4000, limit: 10, phase: 'reveal' },
+      finishAction: { label: 'Next question', onClick },
+    });
+    expect(screen.queryByRole('button', { name: /Previous/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Next question/ }));
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
   it('jumps to a question from the step row', async () => {
     const user = userEvent.setup();
     const onJump = vi.fn();

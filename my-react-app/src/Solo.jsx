@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { questionsUrl } from './api';
+import { apiFetch } from './serverStatus';
 import Settings from './components/Settings';
 import QuestionCard from './components/QuestionCard';
 import ResultsBoard from './components/ResultsBoard';
@@ -48,18 +49,43 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   const [error, setError] = useState('');
   const settingsRef = useRef(null);
 
-  const total = questions.length;
-  const answeredCount = order.length;
-  const allAnswered = total > 0 && answeredCount === total;
+  // Time limit for this round (0 = none), fixed when the questions are generated
+  const [timeLimit, setTimeLimit] = useState(0);
+  const [deadline, setDeadline] = useState(null); // when the question on screen runs out, on our clock
+  const [timedOut, setTimedOut] = useState({}); // question index -> true when time ran out unanswered
 
-  // One mark per question for the step row: correct, wrong or not answered yet
+  const total = questions.length;
+  const answeredCount = order.length; // answered or timed out
+  const allAnswered = total > 0 && answeredCount === total;
+  // A timed round goes one question at a time; once it's over, reviewing is free again
+  const timedRound = timeLimit > 0 && !allAnswered;
+  const currentDone = answers[currentIndex] !== undefined || Boolean(timedOut[currentIndex]);
+
+  // One mark per question for the step row: correct, wrong, timed out or not answered yet
   const marks = useMemo(
     () =>
-      questions.map((q, i) =>
-        answers[i] === undefined ? undefined : answers[i] === q.correct ? 'correct' : 'wrong'
-      ),
-    [questions, answers]
+      questions.map((q, i) => {
+        if (answers[i] !== undefined) return answers[i] === q.correct ? 'correct' : 'wrong';
+        return timedOut[i] ? 'timeout' : undefined;
+      }),
+    [questions, answers, timedOut]
   );
+
+  // Run the clock on the open question: when it runs out, the question counts as missed
+  useEffect(() => {
+    if (!timedRound || currentDone || deadline === null) return;
+    const index = currentIndex;
+    const timer = setTimeout(() => {
+      setTimedOut((prev) => ({ ...prev, [index]: true }));
+      setOrder((prev) => (prev.includes(index) ? prev : [...prev, index]));
+    }, Math.max(0, deadline - Date.now()));
+    return () => clearTimeout(timer);
+  }, [timedRound, currentDone, deadline, currentIndex]);
+
+  function openQuestion(index) {
+    setCurrentIndex(index);
+    if (timeLimit > 0) setDeadline(Date.now() + timeLimit * 1000);
+  }
   const score = marks.filter((m) => m === 'correct').length;
   const streak = useMemo(() => streaks(order.map((i) => marks[i] === 'correct')), [order, marks]);
 
@@ -76,14 +102,18 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       streak: streak.current,
       index: currentIndex,
       items,
-      jump: (i) => {
-        setShowResults(false);
-        setCurrentIndex(i);
-      },
+      // no skipping around in a timed round
+      jump: timedRound
+        ? undefined
+        : (i) => {
+            setShowResults(false);
+            setCurrentIndex(i);
+          },
     });
-  }, [answeredCount, score, total, streak, currentIndex, items, onProgress]);
+  }, [answeredCount, score, total, streak, currentIndex, items, timedRound, onProgress]);
 
   function handleAnswer(answer) {
+    if (timedRound && (timedOut[currentIndex] || Date.now() > deadline)) return; // too late
     setAnswers((prev) => ({ ...prev, [currentIndex]: answer }));
     setOrder((prev) => [...prev, currentIndex]);
   }
@@ -92,14 +122,18 @@ function Solo({ settings, onSettingsChange, onProgress }) {
     setLoading(true);
     setError('');
 
-    fetch(questionsUrl(settings))
+    apiFetch(questionsUrl(settings))
       .then((response) => response.json())
       .then((data) => {
         if (!Array.isArray(data)) throw new Error(data.error || 'Failed to fetch questions');
+        const limit = Number(settings.timer) || 0;
         setQuestions(data.map(toQuestion));
         setCurrentIndex(0);
         setAnswers({});
         setOrder([]);
+        setTimedOut({});
+        setTimeLimit(limit);
+        setDeadline(limit > 0 ? Date.now() + limit * 1000 : null);
         setShowResults(false);
       })
       .catch((error) => {
@@ -132,6 +166,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
         <div className="board-body">
           <Settings settings={settings} onChange={onSettingsChange} />
           <div className="board-actions">
+            <p className="load-hint">Questions come from the Open Trivia Database and can take a few seconds to load.</p>
             <button className="btn btn-primary" onClick={generate} disabled={loading}>
               {loading ? 'Loading…' : total > 0 ? 'Generate New Questions' : 'Generate Questions'}
             </button>
@@ -156,6 +191,9 @@ function Solo({ settings, onSettingsChange, onProgress }) {
           stats={[
             { label: 'Accuracy', value: `${Math.round((score / total) * 100)}%` },
             { label: 'Best streak', value: streak.best },
+            ...(timeLimit > 0
+              ? [{ label: 'Ran out of time', value: Object.keys(timedOut).length }]
+              : []),
           ]}
           missed={missed}
           share={shareText({
@@ -195,7 +233,21 @@ function Solo({ settings, onSettingsChange, onProgress }) {
           streak={streak.current}
           note={streakNote}
           marks={marks}
-          finishAction={allAnswered ? { label: 'See results', onClick: () => setShowResults(true) } : undefined}
+          countdown={
+            timedRound && deadline !== null
+              ? { deadline, limit: timeLimit, phase: currentDone ? 'reveal' : 'open' }
+              : undefined
+          }
+          closed={Boolean(timedOut[currentIndex])}
+          locked={timedRound}
+          lockedHint={currentDone ? undefined : 'Answer before the time runs out.'}
+          finishAction={
+            allAnswered
+              ? { label: 'See results', onClick: () => setShowResults(true) }
+              : timedRound && currentDone
+                ? { label: 'Next question', onClick: () => openQuestion(currentIndex + 1) }
+                : undefined
+          }
           onAnswer={handleAnswer}
           onPrevious={() => setCurrentIndex((i) => Math.max(0, i - 1))}
           onNext={() => setCurrentIndex((i) => Math.min(total - 1, i + 1))}

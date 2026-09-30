@@ -4,14 +4,13 @@ import useIndicator from './useIndicator';
 import Solo from './Solo';
 import Multiplayer from './Multiplayer';
 import Daily from './Daily';
+import WakeBanner from './components/WakeBanner';
 import { AnswerLog, HowToPlay, LineMap, RoundBoard } from './components/SideBoards';
 
-const defaultSettings = { amount: 10, category: '', difficulty: '', type: '' };
+const defaultSettings = { amount: 10, category: '', difficulty: '', type: '', timer: '' };
 
 // start the backend:  cd backend  then  uvicorn apicall:app --reload --port 8000
 // start the frontend: cd my-react-app  then  npm run dev
-
-//to do list: Make the user be able to see their score at the end of the quiz. Make the user be able to restart the quiz.
 
 // Open on multiplayer for an invite link, or when this tab was in a room before a reload
 function hasSeat() {
@@ -25,7 +24,9 @@ const startInMultiplayer = new URLSearchParams(window.location.search).has('room
 
 function App() {
   const [mode, setMode] = useState(startInMultiplayer ? 'multi' : 'solo');
-  const [settings, setSettings] = useState(defaultSettings);
+  // Solo and multiplayer each keep their own settings, so changing one never changes the other
+  const [soloSettings, setSoloSettings] = useState(defaultSettings);
+  const [roomSettings, setRoomSettings] = useState(defaultSettings);
   const tabsRef = useRef(null);
   const sign = useIndicator(tabsRef, '[aria-selected="true"]', [mode]);
 
@@ -65,15 +66,17 @@ function App() {
           </button>
         </div>
 
+        <WakeBanner />
+
         {/* All stay mounted so switching tabs doesn't lose your quiz or kick you out of a room */}
         <div className="mode-panel" hidden={mode !== 'solo'}>
-          <Solo settings={settings} onSettingsChange={setSettings} onProgress={onSoloProgress} />
+          <Solo settings={soloSettings} onSettingsChange={setSoloSettings} onProgress={onSoloProgress} />
         </div>
         <div className="mode-panel" hidden={mode !== 'daily'}>
           <Daily onProgress={onDailyProgress} />
         </div>
         <div className="mode-panel" hidden={mode !== 'multi'}>
-          <Multiplayer settings={settings} onSettingsChange={setSettings} onProgress={onMultiProgress} />
+          <Multiplayer settings={roomSettings} onSettingsChange={setRoomSettings} onProgress={onMultiProgress} />
         </div>
       </div>
 

@@ -28,7 +28,9 @@ Zero friction: no accounts and no install. In solo mode you pick settings and pl
 - Three modes: Solo, Daily (the same 10 questions for everyone each UTC day, one go per browser, leaderboard ranked by correct answers then time), and Multiplayer.
 - The daily challenge is the only persisted data: SQLite via `backend/daily.py` (path set by `QUIZZR_DB`). On Render's free plan the disk is temporary, so daily results reset whenever the server restarts. `database/data.sql` is an older, unused sketch.
 - Multiplayer seats are held for 90 seconds after a dropped connection, and players rejoin with a per-tab token. Scoring is 100 points per correct answer plus up to 50 for speed.
+- Timed multiplayer (10, 20 or 30 seconds per question, chosen by the host) runs in lockstep on the server's clock: one question open for everyone, late answers refused, the answer revealed to all when it closes.
 - Every mode ends with a results screen and a copyable share text.
+- Requests slower than 2.5 seconds show a "still working / waking the server up" notice, and requests give up after 90 seconds. A cold first page load can't show it, because the same server delivers the page; only hosting the frontend separately would fix that.
 - Tests: pytest (`backend/tests`) and Vitest (`my-react-app/src/**/*.test.*`), run by GitHub Actions (`.github/workflows/ci.yml`).
 - Name: "Quizzr" is now shown in the app header, but it's still unconfirmed as a brand. Positioning beyond zero friction is undecided.
 

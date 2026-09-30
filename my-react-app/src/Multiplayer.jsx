@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { roomSocketUrl } from './api';
-import Settings from './components/Settings';
+import { apiFetch, track } from './serverStatus';
+import Settings, { SettingsSummary } from './components/Settings';
 import QuestionCard from './components/QuestionCard';
 import FlapText from './components/FlapText';
 import Icon from './components/Icon';
@@ -58,6 +59,8 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const [room, setRoom] = useState(null); // latest "state" message from the server
   const [questions, setQuestions] = useState([]);
   const [results, setResults] = useState({}); // question index -> { answer, correct, correctAnswer, points, streak }
+  const [revealed, setRevealed] = useState({}); // timed games: question index -> answer, once it has closed
+  const [clockOffset, setClockOffset] = useState(0); // server clock minus ours, in milliseconds
   const [currentIndex, setCurrentIndex] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -67,6 +70,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const roundRef = useRef(null);
   const resumeRef = useRef(false); // true until a mid-game join has been moved to its next question
   const questionCountRef = useRef(0);
+  const adoptSettingsRef = useRef(false); // take the room's settings on joining, rather than overwrite them
   const retryRef = useRef({ attempt: 0, timer: null });
 
   // One mark per question for the step row and the answers board
@@ -74,14 +78,18 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     () =>
       questions.map((_, i) => {
         const result = results[i];
-        if (!result) return undefined;
+        if (!result) return revealed[i] !== undefined ? 'timeout' : undefined;
         if (result.correctAnswer === undefined) return 'pending';
         return result.correct ? 'correct' : 'wrong';
       }),
-    [questions, results]
+    [questions, results, revealed]
   );
 
   const me = room?.players.find((p) => p.id === myId);
+
+  // Timed games move everyone together, so the server decides which question is on screen
+  const timer = room?.status === 'playing' ? room.timer : null;
+  const shownIndex = timer ? timer.index : currentIndex;
 
   // Report how my round is going, for the boards beside the quiz on wide screens
   const answeredCount = marks.filter((m) => m === 'correct' || m === 'wrong').length;
@@ -97,17 +105,27 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
       correct: correctCount,
       total: questions.length,
       streak: myStreak,
-      index: currentIndex,
+      index: shownIndex,
       items,
-      jump: setCurrentIndex,
+      jump: timer ? undefined : setCurrentIndex, // no skipping ahead in a timed game
     });
-  }, [answeredCount, correctCount, questions.length, myStreak, currentIndex, items, onProgress]);
+  }, [answeredCount, correctCount, questions.length, myStreak, shownIndex, timer, items, onProgress]);
+
+  // The host's settings go to the server as they change, so everyone in the room sees them
+  const amHost = Boolean(room && myId && room.hostId === myId);
+  const canConfigure = amHost && (room.status === 'lobby' || room.status === 'finished');
+  useEffect(() => {
+    if (!canConfigure || adoptSettingsRef.current) return;
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'settings', settings }));
+  }, [settings, canConfigure]);
 
   function resetRoom() {
     setMyId(null);
     setRoom(null);
     setQuestions([]);
     setResults({});
+    setRevealed({});
     setCurrentIndex(0);
     roundRef.current = null;
   }
@@ -133,6 +151,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     const socket = new WebSocket(roomSocketUrl(code));
     socketRef.current = socket;
     let refused = false; // the server said this room can't be joined, so don't retry
+    const joined = track(); // a slow join is most likely the server waking up
 
     socket.onopen = () => {
       const seat = seatRef.current;
@@ -149,15 +168,35 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
       const message = JSON.parse(event.data);
       switch (message.type) {
         case 'welcome':
+          joined();
           stopRetrying();
           seatRef.current = { code, token: message.token, name: joinRef.current.name };
           saveSeat(seatRef.current);
           setMyId(message.playerId);
+          adoptSettingsRef.current = true;
           setPhase('room');
           setError('');
           break;
         case 'state':
+          // How far our clock is from the server's, so timed countdowns end when the server's do
+          setClockOffset(message.serverNow * 1000 - Date.now());
+          if (adoptSettingsRef.current && message.settings) {
+            adoptSettingsRef.current = false;
+            onSettingsChange(message.settings);
+          }
           setRoom(message);
+          break;
+        case 'reveal':
+          // A timed question closed: everyone learns the answer, answered or not
+          setRevealed((prev) => ({ ...prev, [message.index]: message.correctAnswer }));
+          break;
+        case 'answer_rejected':
+          // Too late for a timed question: drop the answer we'd marked as checking
+          setResults((prev) => {
+            const next = { ...prev };
+            if (next[message.index]?.correctAnswer === undefined) delete next[message.index];
+            return next;
+          });
           break;
         case 'questions':
           setQuestions(message.questions);
@@ -167,12 +206,14 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
             resumeRef.current = roundRef.current === null; // joining a game already under way
             roundRef.current = message.round;
             setResults({});
+            setRevealed({});
             setCurrentIndex(0);
           }
           break;
         case 'answers': {
           // Our own answers as the server has them, after a reconnect
           setResults(Object.fromEntries(message.results.map((r) => [r.index, r])));
+          setRevealed(Object.fromEntries((message.revealed ?? []).map((r) => [r.index, r.correctAnswer])));
           // After a reload we start from nothing, so carry on at the first question left to answer
           if (resumeRef.current) {
             resumeRef.current = false;
@@ -193,6 +234,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     };
 
     socket.onclose = () => {
+      joined();
       if (socketRef.current !== socket) return; // we left on purpose, or a newer socket took over
       socketRef.current = null;
       if (refused) {
@@ -259,13 +301,13 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     setError('');
     setPhase('connecting');
     try {
-      const response = await fetch('/api/rooms', { method: 'POST' });
+      const response = await apiFetch('/api/rooms', { method: 'POST' });
       const data = await response.json();
       seatRef.current = null;
       openSocket(data.code, name.trim());
-    } catch {
+    } catch (e) {
       setPhase('menu');
-      setError('Could not reach the server.');
+      setError(e.message);
     }
   }
 
@@ -304,8 +346,8 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   function answer(option) {
     // Mark as picked right away so it can't be clicked twice; the server fills in the result.
     // If we're offline, the answer waits here and the server's copy replaces it on reconnect.
-    setResults((prev) => ({ ...prev, [currentIndex]: { answer: option } }));
-    send({ type: 'answer', index: currentIndex, answer: option });
+    setResults((prev) => ({ ...prev, [shownIndex]: { answer: option } }));
+    send({ type: 'answer', index: shownIndex, answer: option });
   }
 
   function copyInvite() {
@@ -392,11 +434,12 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const host = room.players.find((p) => p.id === room.hostId);
   const total = questions.length;
   const iAmDone = total > 0 && answeredCount === total;
-  const current = questions[currentIndex];
+  const current = questions[shownIndex];
   const hostControls = isHost && (
     <>
       <Settings settings={settings} onChange={onSettingsChange} idPrefix="mp-" />
       <div className="board-actions">
+        <p className="load-hint">Questions come from the Open Trivia Database and can take a few seconds to load.</p>
         <button className="btn btn-primary" onClick={startGame} disabled={phase === 'reconnecting'}>
           {room.status === 'finished' ? 'Play again' : 'Start game'}
         </button>
@@ -409,7 +452,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const myRank = room.players.findIndex((p) => p.id === myId) + 1;
 
   // What the feedback line adds after an answer: the points, any speed bonus, a streak
-  const result = results[currentIndex];
+  const result = results[shownIndex];
   let note;
   if (result?.correctAnswer !== undefined && result.correct && result.points) {
     const bonus = result.points - 100;
@@ -450,19 +493,25 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
       {room.status === 'lobby' && (
         <section className="board" aria-labelledby="lobby-title">
           <div className="board-head">
-            <h2 className="board-title" id="lobby-title">Lobby</h2>
+            <h2 className="board-title" id="lobby-title">Quiz settings</h2>
+            {!isHost && <span className="board-head-note">Chosen by {host?.name ?? 'the host'}</span>}
           </div>
           <div className="board-body">
             {isHost ? (
               <>
                 <p className="muted-text lobby-note">
-                  Share the room code with friends. Pick the settings and start when everyone has joined.
-                  Correct answers score 100 points, plus up to 50 more for answering quickly.
+                  Share the room code with friends, pick the settings, and start when everyone has joined.
+                  Everyone sees your choices as you make them. Correct answers score 100 points, plus up to
+                  50 more for answering quickly. With a time limit, everyone plays each question together
+                  and moves on when time runs out or everyone has answered.
                 </p>
                 {hostControls}
               </>
             ) : (
-              <p className="waiting">Waiting for {host?.name ?? 'the host'} to start the game…</p>
+              <>
+                <SettingsSummary settings={room.settings ?? settings} />
+                <p className="waiting">Waiting for {host?.name ?? 'the host'} to start the game…</p>
+              </>
             )}
           </div>
         </section>
@@ -526,7 +575,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
 
       {room.status === 'finished' && <Leaderboard room={room} myId={myId} />}
 
-      {room.status === 'playing' && iAmDone && (
+      {room.status === 'playing' && iAmDone && !timer && (
         <p className="banner" role="status">
           You're done! Waiting for everyone else to finish…
         </p>
@@ -534,14 +583,23 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
 
       {(room.status === 'playing' || room.status === 'finished') && current && (
         <QuestionCard
-          index={currentIndex}
+          index={shownIndex}
           total={total}
           category={current.category}
           difficulty={current.difficulty}
           question={current.question}
           options={current.options}
-          picked={results[currentIndex]?.answer}
-          correctAnswer={results[currentIndex]?.correctAnswer}
+          picked={results[shownIndex]?.answer}
+          correctAnswer={results[shownIndex]?.correctAnswer ?? revealed[shownIndex]}
+          closed={revealed[shownIndex] !== undefined}
+          locked={Boolean(timer)}
+          countdown={
+            timer && {
+              deadline: timer.deadline * 1000 - clockOffset, // on our clock
+              limit: room.timeLimit,
+              phase: timer.phase,
+            }
+          }
           score={me?.score ?? 0}
           scoreDigits={POINT_DIGITS}
           scoreSuffix="pts"

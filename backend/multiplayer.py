@@ -24,6 +24,13 @@ from trivia import TriviaError, fetch_questions, prepare_question, public_questi
 # measured from the start of the game or the player's previous answer. Streaks count
 # correct answers in a row.
 #
+# Timed games (settings.timer = 10, 20 or 30 seconds) run in lockstep on the server's clock:
+# one question is open at a time, for everyone. It closes when its time is up or when every
+# connected player has answered, then the answer is revealed to all ({"type": "reveal"}),
+# and REVEAL_SECONDS later the next one opens. Answers that arrive after the deadline are
+# refused. The state message carries the open question and its deadline, plus the server's
+# clock so browsers can count down accurately.
+#
 # Rooms live in memory, so they disappear if the server restarts.
 
 router = APIRouter(prefix="/api")
@@ -38,6 +45,10 @@ BASE_POINTS = 100
 SPEED_BONUS = 50
 BONUS_FULL_SECONDS = 5  # answer within this long for the whole bonus
 BONUS_ZERO_SECONDS = 20  # after this long there's no bonus left
+
+TIMER_CHOICES = {10, 20, 30}  # seconds per question in a timed game
+REVEAL_SECONDS = 3  # pause on the revealed answer before the next question opens
+ANSWER_GRACE = 0.75  # seconds of network delay forgiven after a deadline
 
 rooms = {}
 _seat_timers = set()  # keeps pending seat-expiry tasks alive until they run
@@ -96,6 +107,15 @@ class Room:
         self.questions = []
         self.round = 0  # goes up with every game, so clients can tell a new game from a resend
         self.created_at = time.time()
+        # timed games only
+        self.time_limit = 0  # seconds per question; 0 means untimed
+        self.current = None  # index of the question everyone is on
+        self.question_phase = None  # "open" while answers count, then "reveal"
+        self.opened_at = None
+        self.deadline = None
+        self.revealed = {}  # question index -> correct answer, once that question has closed
+        self.clock_task = None
+        self.settings = dict(DEFAULT_SETTINGS)  # the host's current choices, shown to everyone
 
     def connected_players(self):
         return [p for p in self.players.values() if p.connected]
@@ -124,6 +144,14 @@ class Room:
             "status": self.status,
             "hostId": self.host_id,
             "questionCount": len(self.questions),
+            "timeLimit": self.time_limit,
+            "settings": self.settings,
+            "timer": (
+                {"index": self.current, "phase": self.question_phase, "deadline": self.deadline}
+                if self.time_limit and self.status == "playing"
+                else None
+            ),
+            "serverNow": time.time(),  # lets browsers line their countdown up with our clock
             "players": [
                 {
                     "id": p.id,
@@ -162,6 +190,8 @@ class Room:
                 }
                 for index, a in sorted(player.answers.items())
             ],
+            # timed games: closed questions this player didn't answer still show the answer
+            "revealed": [{"index": i, "correctAnswer": c} for i, c in sorted(self.revealed.items())],
         }
 
     def everyone_finished(self):
@@ -196,6 +226,7 @@ def remove_player(room, player):
     room.players.pop(player.id, None)
     if not room.players:
         rooms.pop(room.code, None)
+        stop_clock(room)
     else:
         room.pass_host_if_needed()
 
@@ -212,10 +243,112 @@ def expire_seat(room, player, now=None):
 
 
 async def settle(room):
-    """Finish the game if everyone here is done, then tell everyone the new state."""
-    if room.status == "playing" and room.everyone_finished():
-        room.status = "finished"
+    """Move the game on if everyone here is done, then tell everyone the new state."""
+    if room.status == "playing":
+        if room.time_limit:
+            # Timed: close the open question as soon as everyone connected has answered it
+            active = room.connected_players()
+            if room.question_phase == "open" and active and all(room.current in p.answers for p in active):
+                await close_question(room, room.current)
+                return  # close_question sends the new state
+        elif room.everyone_finished():
+            room.status = "finished"
     await room.broadcast(room.state_message())
+
+
+# ---------- the clock for timed games ----------
+
+def stop_clock(room):
+    task = room.clock_task
+    room.clock_task = None
+    if task is not None and task is not asyncio.current_task():
+        task.cancel()
+
+
+def start_clock(room, step):
+    """Run the next timed step, replacing whatever the clock was waiting on."""
+    stop_clock(room)
+    room.clock_task = asyncio.create_task(step)
+
+
+def room_is_live(room):
+    return rooms.get(room.code) is room and room.status == "playing"
+
+
+async def open_question(room, index):
+    now = time.time()
+    room.current = index
+    room.question_phase = "open"
+    room.opened_at = now
+    room.deadline = now + room.time_limit
+    for player in room.players.values():
+        player.last_answer_at = now  # the speed bonus counts from the moment it opens
+    start_clock(room, close_after(room, index, room.time_limit))
+    await room.broadcast(room.state_message())
+
+
+async def close_after(room, index, delay):
+    await asyncio.sleep(delay)
+    await close_question(room, index)
+
+
+async def close_question(room, index):
+    if not room_is_live(room) or room.current != index or room.question_phase != "open":
+        return
+    room.question_phase = "reveal"
+    correct = room.questions[index]["correct"]
+    room.revealed[index] = correct
+    for player in room.players.values():
+        if index not in player.answers:
+            player.streak = 0  # running out of time breaks a streak
+    await room.broadcast({"type": "reveal", "index": index, "correctAnswer": correct})
+    await room.broadcast(room.state_message())
+    start_clock(room, advance_after(room, index))
+
+
+async def advance_after(room, index):
+    await asyncio.sleep(REVEAL_SECONDS)
+    if not room_is_live(room) or room.current != index:
+        return
+    if index + 1 < len(room.questions):
+        await open_question(room, index + 1)
+    else:
+        room.status = "finished"
+        room.current = room.question_phase = room.deadline = None
+        room.clock_task = None
+        await room.broadcast(room.state_message())
+
+
+def timer_setting(settings):
+    try:
+        seconds = int(settings.get("timer") or 0)
+    except (TypeError, ValueError):
+        return 0
+    return seconds if seconds in TIMER_CHOICES else 0
+
+
+DEFAULT_SETTINGS = {"amount": 10, "category": "", "difficulty": "", "type": "", "timer": ""}
+
+
+def clean_settings(settings):
+    """The host's quiz settings, kept to values the game understands, to share with the room."""
+    if not isinstance(settings, dict):
+        return dict(DEFAULT_SETTINGS)
+    try:
+        amount = max(1, min(int(settings.get("amount")), 50))
+    except (TypeError, ValueError):
+        amount = DEFAULT_SETTINGS["amount"]
+    category = str(settings.get("category") or "")
+    difficulty = settings.get("difficulty") or ""
+    qtype = settings.get("type") or ""
+    timer = timer_setting(settings)
+    return {
+        "amount": amount,
+        "category": category if category.isdigit() and 9 <= int(category) <= 32 else "",
+        "difficulty": difficulty if difficulty in ("easy", "medium", "hard") else "",
+        "type": qtype if qtype in ("multiple", "boolean") else "",
+        "timer": str(timer) if timer else "",
+    }
 
 
 async def expire_seat_later(room, player):
@@ -271,11 +404,18 @@ async def start_game(room, settings):
 
     room.questions = [prepare_question(q) for q in raw]
     room.round += 1
+    room.time_limit = timer_setting(settings)
+    room.revealed = {}
+    room.current = room.question_phase = room.deadline = None
+    stop_clock(room)
     for player in room.players.values():
         player.reset()
     room.status = "playing"
     await room.broadcast(room.questions_message())
-    await room.broadcast(room.state_message())
+    if room.time_limit:
+        await open_question(room, 0)  # sends the state with the first deadline
+    else:
+        await room.broadcast(room.state_message())
 
 
 async def submit_answer(room, player, index, answer):
@@ -285,6 +425,12 @@ async def submit_answer(room, player, index, answer):
         return
     if index in player.answers:
         return
+    if room.time_limit:
+        # Timed: only the open question counts, and only until its deadline
+        on_time = room.question_phase == "open" and time.time() <= room.deadline + ANSWER_GRACE
+        if index != room.current or not on_time:
+            await player.ws.send_json({"type": "answer_rejected", "index": index, "message": "Time's up for that question."})
+            return
 
     question = room.questions[index]
     correct = answer == question["correct"]
@@ -306,7 +452,13 @@ async def handle_message(room, player, message):
     kind = message.get("type")
     if kind == "start":
         if player.id == room.host_id and room.status in ("lobby", "finished"):
-            await start_game(room, message.get("settings") or {})
+            room.settings = clean_settings(message.get("settings"))
+            await start_game(room, room.settings)
+    elif kind == "settings":
+        # The host changing settings in the lobby: everyone sees the new choices straight away
+        if player.id == room.host_id and room.status in ("lobby", "finished"):
+            room.settings = clean_settings(message.get("settings"))
+            await room.broadcast(room.state_message())
     elif kind == "answer":
         await submit_answer(room, player, message.get("index"), message.get("answer"))
 

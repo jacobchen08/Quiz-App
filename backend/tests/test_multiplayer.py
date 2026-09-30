@@ -157,6 +157,83 @@ def test_leaving_frees_the_seat_and_passes_the_host_on(client):
     assert [p["name"] for p in state["players"]] == ["Bob"]
 
 
+def receive_state_where(ws, test):
+    for _ in range(100):
+        message = ws.receive_json()
+        if message["type"] == "state" and test(message):
+            return message
+    raise AssertionError("the expected state never arrived")
+
+
+def test_timed_game_runs_in_lockstep_on_the_server_clock(client, monkeypatch):
+    # One second per question and a short pause between them keeps the test quick
+    monkeypatch.setattr(multiplayer, "TIMER_CHOICES", {1})
+    monkeypatch.setattr(multiplayer, "REVEAL_SECONDS", 0.05)
+    code = new_room(client)
+    with client.websocket_connect(f"/api/ws/{code}") as ws:
+        join(ws, "Ann")
+        ws.send_json({"type": "start", "settings": {"timer": 1}})
+        receive_until(ws, "questions")
+        first = receive_state_where(ws, lambda s: s["timer"] and s["timer"]["index"] == 0)
+        assert first["timeLimit"] == 1
+        assert first["timer"]["phase"] == "open"
+        assert 0.5 < first["timer"]["deadline"] - first["serverNow"] <= 1
+
+        # Jumping ahead doesn't count: only the open question does
+        ws.send_json({"type": "answer", "index": 2, "answer": "C"})
+        assert receive_until(ws, "answer_rejected")["index"] == 2
+
+        # Everyone (just Ann) answering closes the question early and reveals it
+        ws.send_json({"type": "answer", "index": 0, "answer": "A"})
+        assert receive_until(ws, "answer_result")["correct"]
+        assert receive_until(ws, "reveal") == {"type": "reveal", "index": 0, "correctAnswer": "A"}
+
+        # The next one opens by itself; let its time run out
+        receive_state_where(ws, lambda s: s["timer"] and s["timer"]["index"] == 1 and s["timer"]["phase"] == "open")
+        assert receive_until(ws, "reveal")["index"] == 1
+        ws.send_json({"type": "answer", "index": 1, "answer": "True"})  # too late
+        assert receive_until(ws, "answer_rejected")["index"] == 1
+
+        receive_state_where(ws, lambda s: s["timer"] and s["timer"]["index"] == 2 and s["timer"]["phase"] == "open")
+        ws.send_json({"type": "answer", "index": 2, "answer": "C"})
+        final = receive_state_where(ws, lambda s: s["status"] == "finished")
+
+    me = final["players"][0]
+    assert me["correct"] == 2 and me["answered"] == 2
+    assert me["streak"] == 1 and me["bestStreak"] == 1  # the timed-out question broke the streak
+    assert final["timer"] is None
+
+
+def test_the_hosts_settings_are_shared_with_the_room(client):
+    code = new_room(client)
+    with client.websocket_connect(f"/api/ws/{code}") as host:
+        join(host, "Ann")
+        with client.websocket_connect(f"/api/ws/{code}") as guest:
+            join(guest, "Bob")
+            host.send_json({
+                "type": "settings",
+                "settings": {"amount": "99", "category": "23", "difficulty": "hard", "type": "essay", "timer": "20"},
+            })
+            shared = receive_state_where(guest, lambda s: s["settings"]["category"] == "23")["settings"]
+            # a guest can't change them
+            guest.send_json({"type": "settings", "settings": {"amount": 1}})
+            host.send_json({"type": "settings", "settings": {**shared, "difficulty": "easy"}})
+            latest = receive_state_where(guest, lambda s: s["settings"]["difficulty"] == "easy")["settings"]
+
+    # out-of-range and unknown values are cleaned up before anyone sees them
+    assert shared == {"amount": 50, "category": "23", "difficulty": "hard", "type": "", "timer": "20"}
+    assert latest["amount"] == 50
+
+
+def test_an_unknown_timer_setting_means_untimed(client):
+    code = new_room(client)
+    with client.websocket_connect(f"/api/ws/{code}") as ws:
+        join(ws, "Ann")
+        ws.send_json({"type": "start", "settings": {"timer": 7}})
+        state = receive_state_where(ws, lambda s: s["status"] == "playing")
+    assert state["timeLimit"] == 0 and state["timer"] is None
+
+
 def test_a_held_seat_expires_after_the_grace_period():
     multiplayer.rooms.clear()
     room = Room("TEST1")

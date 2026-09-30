@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FlapText from './FlapText';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import Pips from './Pips';
 import { categoryByName, difficultyByValue } from '../categories';
 
-// Shows one question with its answer buttons. Used by both solo and multiplayer.
+// Shows one question with its answer buttons. Used by solo, daily and multiplayer.
 // `picked` is the answer the player chose (undefined until they answer) and
-// `correctAnswer` is only needed once they have answered.
-// `marks` has one entry per question: 'correct', 'wrong', 'pending' or undefined.
+// `correctAnswer` is only needed once they have answered, or once the question has closed.
+// `marks` has one entry per question: 'correct', 'wrong', 'pending', 'timeout' or undefined.
+//
+// Timed multiplayer adds three props: `countdown` ({ deadline, limit, phase }, the deadline
+// already on this browser's clock), `closed` (time's up, answered or not) and `locked`
+// (everyone moves on together, so there's no going back or skipping ahead).
 
-const markLabel = { correct: 'correct', wrong: 'wrong', pending: 'checking' };
+const markLabel = { correct: 'correct', wrong: 'wrong', pending: 'checking', timeout: 'ran out of time' };
 
-function StepRow({ total, index, marks, onJump }) {
+function StepRow({ total, index, marks, onJump, locked }) {
   return (
     <ol className="steps" aria-label="Questions">
       {Array.from({ length: total }, (_, i) => {
@@ -24,15 +28,43 @@ function StepRow({ total, index, marks, onJump }) {
               className={`step ${mark ?? ''}`}
               aria-current={i === index ? 'step' : undefined}
               aria-label={`Question ${i + 1}${mark ? `, ${markLabel[mark]}` : ''}`}
-              onClick={() => onJump(i)}
+              disabled={locked}
+              onClick={() => onJump?.(i)}
             >
               {mark === 'correct' && <Icon name="check" size={14} />}
-              {mark === 'wrong' && <Icon name="cross" size={14} />}
+              {(mark === 'wrong' || mark === 'timeout') && <Icon name="cross" size={14} />}
             </button>
           </li>
         );
       })}
     </ol>
+  );
+}
+
+// Time left on a timed question, from a clock that ticks five times a second
+function useCountdown(countdown) {
+  const [now, setNow] = useState(() => Date.now());
+  const running = countdown?.phase === 'open';
+  useEffect(() => {
+    if (!running) return;
+    const tick = setInterval(() => setNow(Date.now()), 200);
+    return () => clearInterval(tick);
+  }, [running, countdown?.deadline]);
+  if (!countdown) return { secondsLeft: null, fraction: 0 };
+  if (!running) return { secondsLeft: 0, fraction: 0 };
+  const left = Math.max(0, countdown.deadline - now);
+  return {
+    secondsLeft: Math.ceil(left / 1000),
+    fraction: Math.min(1, left / (countdown.limit * 1000)),
+  };
+}
+
+// A draining bar under the head: the same time as the digits, readable at a glance
+function CountdownBar({ fraction, urgent }) {
+  return (
+    <div className={`countdown${urgent ? ' is-urgent' : ''}`} aria-hidden="true">
+      <span className="countdown-fill" style={{ transform: `scaleX(${fraction})` }} />
+    </div>
   );
 }
 
@@ -52,6 +84,10 @@ function QuestionCard({
   streak = 0,
   note,
   finishAction,
+  countdown,
+  closed = false,
+  locked = false,
+  lockedHint,
   marks,
   onAnswer,
   onPrevious,
@@ -59,13 +95,16 @@ function QuestionCard({
   onJump,
 }) {
   const isAnswered = picked !== undefined;
+  const timedOut = closed && !isAnswered;
   const line = categoryByName(category);
   const level = difficultyByValue(difficulty);
+  const { secondsLeft, fraction } = useCountdown(countdown);
+  const urgent = countdown?.phase === 'open' && secondsLeft <= 5;
 
   // Clicking an answer only selects it; nothing counts until the player submits.
   // The selection belongs to one question, so moving to another starts fresh.
   const [selection, setSelection] = useState({ index, option: null });
-  const selected = !isAnswered && selection.index === index ? selection.option : null;
+  const selected = !isAnswered && !closed && selection.index === index ? selection.option : null;
 
   function submit() {
     if (selected !== null) onAnswer(selected);
@@ -81,12 +120,15 @@ function QuestionCard({
   const digits = String(total).length < 2 ? 2 : String(total).length;
 
   function answerState(option) {
+    if (timedOut) return option === correctAnswer ? 'correct' : 'dimmed';
     if (!isAnswered) return option === selected ? 'selected' : '';
     if (correctAnswer === undefined) return option === picked ? 'pending' : 'dimmed'; // waiting on the server
     if (option === correctAnswer) return 'correct';
     if (option === picked) return 'wrong';
     return 'dimmed';
   }
+
+  const isLast = index >= total - 1;
 
   return (
     <section className="board" aria-label={`Question ${index + 1} of ${total}`}>
@@ -99,6 +141,14 @@ function QuestionCard({
           </span>
         </div>
         <div className="readout-group">
+          {countdown && (
+            <div className={`readout readout-end readout-time${urgent ? ' is-urgent' : ''}`}>
+              <span className="readout-label">Time</span>
+              <span className="readout-value">
+                <FlapText text={String(secondsLeft).padStart(2, '0')} label={`${secondsLeft} seconds left`} size="lg" />
+              </span>
+            </div>
+          )}
           <div className={`readout readout-end readout-streak${streak >= 2 ? ' is-hot' : ''}`}>
             <span className="readout-label">Streak</span>
             <span className="readout-value">
@@ -119,8 +169,10 @@ function QuestionCard({
         </div>
       </div>
 
+      {countdown && <CountdownBar fraction={fraction} urgent={urgent} />}
+
       <div className="board-body">
-        <StepRow total={total} index={index} marks={marks} onJump={onJump} />
+        <StepRow total={total} index={index} marks={marks} onJump={onJump} locked={locked} />
 
         {/* Keyed on the question so each new one slides in from the side you moved towards */}
         <div key={index} className={`question-stage from-${direction}`}>
@@ -151,9 +203,9 @@ function QuestionCard({
                 key={option}
                 style={{ '--i': i }}
                 className={`answer ${state}`}
-                aria-pressed={isAnswered ? undefined : option === selected}
+                aria-pressed={isAnswered || closed ? undefined : option === selected}
                 onClick={() => setSelection({ index, option })}
-                disabled={isAnswered}
+                disabled={isAnswered || closed}
               >
                 <span className="answer-letter" aria-hidden="true">{String.fromCharCode(65 + i)}</span>
                 <span className="answer-text">{option}</span>
@@ -172,7 +224,7 @@ function QuestionCard({
         </div>
         </div>
 
-        {!isAnswered && (
+        {!isAnswered && !closed && (
           <div className="submit-row">
             <p className="submit-hint" aria-live="polite">
               {selected === null ? 'Pick an answer, then submit it.' : `Your answer: ${selected}`}
@@ -184,6 +236,12 @@ function QuestionCard({
         )}
 
         <div className="feedback-slot" role="status">
+          {timedOut && correctAnswer !== undefined && (
+            <p className="feedback wrong">
+              <Icon name="pending" size={20} />
+              <span>Time's up. The answer is {correctAnswer}.</span>
+            </p>
+          )}
           {isAnswered && correctAnswer !== undefined && (
             <p className={`feedback ${picked === correctAnswer ? 'correct' : 'wrong'}`}>
               <Icon name={picked === correctAnswer ? 'check' : 'cross'} size={20} />
@@ -193,25 +251,52 @@ function QuestionCard({
               </span>
             </p>
           )}
-        </div>
-
-        <div className="nav">
-          <button className="btn" onClick={onPrevious} disabled={index === 0}>
-            <Icon name="arrow-left" />
-            Previous
-          </button>
-          {finishAction ? (
-            <button className="btn btn-primary btn-finish" onClick={finishAction.onClick}>
-              {finishAction.label}
-              <Icon name="arrow-right" />
-            </button>
-          ) : (
-            <button className="btn" onClick={onNext} disabled={index >= total - 1}>
-              Next
-              <Icon name="arrow-right" />
-            </button>
+          {/* At five seconds, say so once for people who can't see the countdown */}
+          {countdown?.phase === 'open' && !isAnswered && urgent && secondsLeft > 0 && (
+            <span className="sr-only">Five seconds left.</span>
           )}
         </div>
+
+        {locked ? (
+          <div className="nav nav-locked-row">
+            <p className="nav-locked" aria-live="polite">
+              {lockedHint ??
+                (finishAction
+                  ? ''
+                  : countdown?.phase === 'reveal'
+                    ? isLast
+                      ? 'Final results coming up…'
+                      : 'Next question coming up…'
+                    : isAnswered
+                      ? 'Answer in. Waiting for everyone else or the clock…'
+                      : 'Everyone is on this question together.')}
+            </p>
+            {finishAction && (
+              <button className="btn btn-primary btn-finish" onClick={finishAction.onClick}>
+                {finishAction.label}
+                <Icon name="arrow-right" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="nav">
+            <button className="btn" onClick={onPrevious} disabled={index === 0}>
+              <Icon name="arrow-left" />
+              Previous
+            </button>
+            {finishAction ? (
+              <button className="btn btn-primary btn-finish" onClick={finishAction.onClick}>
+                {finishAction.label}
+                <Icon name="arrow-right" />
+              </button>
+            ) : (
+              <button className="btn" onClick={onNext} disabled={isLast}>
+                Next
+                <Icon name="arrow-right" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

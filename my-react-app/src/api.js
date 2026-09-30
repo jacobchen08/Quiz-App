@@ -1,3 +1,5 @@
+import { apiFetch } from './serverStatus';
+
 // All requests go to the same origin the page was served from.
 // In development, vite.config.js proxies /api to the FastAPI server on port 8000.
 
@@ -13,12 +15,7 @@ export function questionsUrl(settings) {
 
 // Daily challenge. Errors come back as { detail } from FastAPI; turn them into thrown Errors.
 async function dailyRequest(path, options) {
-  let response;
-  try {
-    response = await fetch(`/api/daily${path}`, options);
-  } catch {
-    throw new Error('Could not reach the server.');
-  }
+  const response = await apiFetch(`/api/daily${path}`, options); // throws a readable Error when it can't connect
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = typeof data.detail === 'string' ? data.detail : 'Something went wrong. Try again.';

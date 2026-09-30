@@ -4,7 +4,7 @@ import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import { categoryByName, lineNames } from '../categories';
 
-const markLabel = { correct: 'correct', wrong: 'wrong', pending: 'checking' };
+const markLabel = { correct: 'correct', wrong: 'wrong', pending: 'checking', timeout: 'ran out of time' };
 
 // Every question in the round as a departures list: number, line, question, result.
 // The current question is lit, and any row jumps straight to its question.
@@ -48,7 +48,7 @@ export function AnswerLog({ progress }) {
                   <span className="log-text">{item.question}</span>
                   <span className="log-mark">
                     {item.mark === 'correct' && <Icon name="check" size={16} />}
-                    {item.mark === 'wrong' && <Icon name="cross" size={16} />}
+                    {(item.mark === 'wrong' || item.mark === 'timeout') && <Icon name="cross" size={16} />}
                     {item.mark === 'pending' && <Icon name="pending" size={16} />}
                   </span>
                 </button>

@@ -10,6 +10,14 @@ const difficultyOptions = [{ value: '', label: 'Any' }, ...difficulties];
 // Listed A–Z in the picker ("Any Category" stays first)
 const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
 
+// Seconds per question. Off (the default) means take as long as you like.
+const timers = [
+  { value: '', label: 'Off' },
+  { value: '10', label: '10 sec' },
+  { value: '20', label: '20 sec' },
+  { value: '30', label: '30 sec' },
+];
+
 const types = [
   { value: '', label: 'Any' },
   { value: 'multiple', label: 'Multiple choice' },
@@ -110,7 +118,37 @@ function Settings({ settings, onChange, idPrefix = "" }) {
         value={settings.type}
         onChange={(value) => update('type', value)}
       />
+
+      <Switch
+        legend="Time per question"
+        name={`${idPrefix}timer`}
+        options={timers}
+        value={settings.timer ?? ''}
+        onChange={(value) => update('timer', value)}
+      />
     </div>
+  );
+}
+
+// The same choices, read-only: what guests in a room see while the host decides
+export function SettingsSummary({ settings }) {
+  const label = (list, value) => list.find((o) => o.value === (value ?? ''))?.label ?? 'Any';
+  const rows = [
+    ['Questions', settings.amount],
+    ['Category', categoryById(settings.category).name],
+    ['Difficulty', label(difficultyOptions, settings.difficulty)],
+    ['Question type', label(types, settings.type)],
+    ['Time per question', label(timers, settings.timer)],
+  ];
+  return (
+    <dl className="settings-summary">
+      {rows.map(([term, value]) => (
+        <div key={term}>
+          <dt>{term}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

@@ -7,8 +7,9 @@ from trivia import TriviaError, fetch_questions, prepare_question, public_questi
 
 
 class FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self.payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self):
         pass
@@ -46,12 +47,26 @@ def test_ignores_invalid_settings_and_clamps_amount(captured):
 
 @pytest.mark.parametrize(
     "code, message",
-    [(1, "Not enough questions"), (5, "Too many requests"), (3, "Failed to fetch")],
+    [(1, "Not enough questions"), (5, "busy"), (3, "Failed to fetch")],
 )
-def test_api_error_codes_become_friendly_errors(captured, code, message):
+def test_api_error_codes_become_friendly_errors(captured, monkeypatch, code, message):
+    monkeypatch.setattr(trivia.time, "sleep", lambda seconds: None)
     captured["payload"] = {"response_code": code, "results": []}
     with pytest.raises(TriviaError, match=message):
         fetch_questions()
+
+
+def test_rate_limit_waits_and_retries_once(monkeypatch):
+    # Open Trivia DB answers a rate-limited request with HTTP 429 and response_code 5
+    responses = [
+        FakeResponse({"response_code": 5, "result": []}, status_code=429),
+        FakeResponse({"response_code": 0, "results": ["question"]}),
+    ]
+    waits = []
+    monkeypatch.setattr(trivia.requests, "get", lambda url, timeout: responses.pop(0))
+    monkeypatch.setattr(trivia.time, "sleep", waits.append)
+    assert fetch_questions() == ["question"]
+    assert waits == [trivia.RATE_LIMIT_WAIT]
 
 
 def test_network_failure_becomes_friendly_error(monkeypatch):
