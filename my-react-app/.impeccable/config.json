@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-09-29T00:24:20.500Z",
         "reason": "Claude triage: width/height transitions are on absolutely positioned slide indicators (.mode-sign, .switch-thumb) that reflow nothing but themselves; mirrors the same ignore in the repo-root config"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.2, 0.9, 0.35, 1.25)",
+        "files": [
+          "src/App.css"
+        ],
+        "createdAt": "2026-09-30T02:00:13.586Z",
+        "reason": "Claude triage, domain-appropriate motion: the split-flap's lower leaf physically settles with a small rebound when it lands (~50ms); only this curve, only the flap tile"
       }
     ]
   }

@@ -532,6 +532,7 @@
     content: '';
     position: absolute;
     inset: calc(50% - 0.5px) 0 auto;
+    z-index: 2;
     height: 1px;
     background: rgba(0, 0, 0, 0.75);
   }
@@ -542,23 +543,110 @@
   top: 0.02em;
 }
 
-/* the top leaf falling forward as the drum advances one character */
-.flap-leaf {
-  position: absolute;
-  inset: 0 0 50%;
-  background: var(--tile-top);
-  transform-origin: bottom;
-  animation: flap-fall 80ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+/* ---- One flip, in two halves ----
+   Each tile is two half-cards. The top half of the old character falls forward, uncovering
+   the new top; the lower flap then lands, bringing the new bottom half down over the old.
+   --flip is one whole flip; each leaf takes half of it. */
+.flap {
+  --flip: 110ms;
+  perspective: 2.4em;
 }
 
-@keyframes flap-fall {
+.flap-half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+
+.flap-top {
+  top: 0;
+  background: var(--tile-top);
+  border-radius: 0.09em 0.09em 0 0;
+}
+
+.flap-bottom {
+  bottom: 0;
+  background: var(--tile-bottom);
+  border-radius: 0 0 0.09em 0.09em;
+}
+
+/* the glyph is drawn full height inside each half, so each half shows its own part of it */
+.flap-glyph {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 200%;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  padding-top: 0.04em;
+
+  .flap-bottom & {
+    top: -100%;
+  }
+}
+
+.flap-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* above the halves, below the seam */
+}
+
+/* the old top half folds down: turning away from the light, it darkens as it goes */
+.flap-leaf-top {
+  transform-origin: 50% 100%;
+  animation: flap-leaf-fall calc(var(--flip) / 2) cubic-bezier(0.55, 0.05, 0.9, 0.5) both;
+}
+
+/* the flap lands with the new bottom half: coming out of shadow, with a small settle */
+.flap-leaf-bottom {
+  transform-origin: 50% 0%;
+  animation: flap-leaf-land calc(var(--flip) / 2) cubic-bezier(0.2, 0.9, 0.35, 1.25) calc(var(--flip) / 2) both;
+}
+
+/* the falling flap throws a shadow over the bottom half it's about to cover */
+.flap-shade {
+  position: absolute;
+  inset: 50% 0 0;
+  background: #000;
+  pointer-events: none;
+  animation: flap-shade var(--flip) ease-out both;
+}
+
+@keyframes flap-leaf-fall {
   from {
-    transform: perspective(2.5em) rotateX(0deg);
+    transform: rotateX(0deg);
     filter: brightness(1);
   }
   to {
-    transform: perspective(2.5em) rotateX(-90deg);
-    filter: brightness(0.55);
+    transform: rotateX(-90deg);
+    filter: brightness(0.45);
+  }
+}
+
+@keyframes flap-leaf-land {
+  from {
+    transform: rotateX(90deg);
+    filter: brightness(0.5);
+  }
+  to {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes flap-shade {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
@@ -573,7 +661,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flap-leaf {
+  .flap-leaves {
     display: none;
   }
 }
@@ -1894,20 +1982,6 @@ input[type='text'] {
   margin-top: 26px;
 }
 
-.share-card {
-  margin: 0;
-  padding: 16px 18px;
-  border: 1px dashed var(--key-edge);
-  border-radius: var(--radius-key);
-  background: var(--well);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .share-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2400,11 +2474,17 @@ input[type='text'] {
 
 /* ---------- The share slip: a printed ticket, marks as tiles ---------- */
 .share-card {
+  margin: 0;
   padding: 18px 20px;
   border: 1px solid var(--board-edge);
-  border-top: 4px solid var(--signal);
+  border-radius: 0; /* a printed slip has square corners */
+  /* the slip's header strip, in board ink: yellow only ever marks now */
+  box-shadow: inset 0 4px 0 var(--board-edge);
   background: var(--row);
-  white-space: normal;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 
   p {
     margin: 0;
@@ -2474,4 +2554,10 @@ input[type='text'] {
   margin: -2px 0 4px;
   font-size: 14px;
   color: var(--ink-dim);
+}
+
+/* an older rule centred these; the label and answer read left to right like the rest of the row */
+.missed-answer {
+  align-items: flex-start;
+  text-align: left;
 }
