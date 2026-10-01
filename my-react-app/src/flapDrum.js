@@ -16,6 +16,9 @@ const isDigit = (c) => c === ' ' || (c >= '0' && c <= '9');
 // The characters a tile shows on its way from `from` to `to`, skipping ahead on long trips
 export function flipPath(from, to) {
   if (from === to) return [];
+  // separators like "/" and ":" flip straight there: spinning through digits on the way
+  // would briefly show a number that isn't there ("4 7 9" for "4/9")
+  if (!/[A-Z0-9 ]/.test(to)) return [to];
   const digits = isDigit(from) && isDigit(to);
   const drum = digits ? DIGITS : LETTERS;
   const start = drum.indexOf(from);

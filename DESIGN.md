@@ -29,6 +29,8 @@ colors:
   line-teal: "#2fc6c6"
   line-orange: "#ff9d47"
   line-violet: "#b69cff"
+  notice: "#8d887e"
+  seam: "rgba(0, 0, 0, 0.7)"
   ok: "#4fd98a"
   bad: "#ff7a6b"
 typography:
@@ -313,7 +315,7 @@ This is a hybrid system. Each board casts one soft shadow onto the wall, and dep
 
 ## Shapes
 
-Corners are small and mechanical. Boards and the sign plate use 6px, keys, fields and answer rows 4px, the switch track 5px, tiles 3px, and badges 2px. Flap tiles are drawn as two halves with a hard 50% colour stop between tile-top and tile-bottom, plus a 1px dark seam across the middle. A tile that lights up with a result (correct, wrong, or selected) becomes one solid plate and drops its seam, so the seam never reads as a strikethrough. Route badges are small 24px plates (20px in the compact size). Difficulty pips are 4 by 11px bars, and player lines are 5 by 18px bars. The icon set is drawn on a 24px grid with 2px round strokes in currentColor.
+Corners are small and mechanical. Boards and the sign plate use 6px, keys, fields and answer rows 4px, the switch track 5px, tiles 3px, and badges 2px. Flap tiles are drawn as two halves with a hard 50% colour stop between tile-top and tile-bottom, plus a 1px seam (the seam token) across the middle. Every number tile carries the same seam: flaps, answer letters, step-list numbers, the Answers board, missed-question numbers and ranks. A tile that lights up with a result (correct, wrong, or selected) becomes one solid plate and drops its seam, so the seam never reads as a strikethrough. Route badges are small 24px plates (20px in the compact size). Difficulty pips are 4 by 11px bars, and player lines are 5 by 18px bars. The icon set is drawn on a 24px grid with 2px round strokes in currentColor.
 
 ## Components
 
@@ -337,7 +339,7 @@ Physical keys on the board.
 - **Corner Style:** 6px.
 - **Background:** board black, with a board-head strip over a 1px board-edge divider.
 - **Shadow Strategy:** board on the wall (see Elevation & Depth).
-- **Border:** 1px board-edge. Warning boards (server waking, reconnecting) take a line-orange edge.
+- **Border:** 1px board-edge. Notice boards (server waking, reconnecting) take a 1px dashed notice edge with board-ink icons, so they never borrow a line colour, the signal or a status colour.
 - **Internal Padding:** 24px (18px on phones), with an optional board foot in 14px ink-dim.
 
 ### Inputs / Fields

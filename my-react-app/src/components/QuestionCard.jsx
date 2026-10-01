@@ -117,7 +117,8 @@ function QuestionCard({
   }
   const direction = move.direction;
 
-  const digits = String(total).length < 2 ? 2 : String(total).length;
+  // as many digits as the total has: "1 / 9" for a short round, "01 / 10" for a long one
+  const digits = String(total).length;
 
   function answerState(option) {
     if (timedOut) return option === correctAnswer ? 'correct' : 'dimmed';
@@ -192,7 +193,7 @@ function QuestionCard({
           <div className={`readout readout-end readout-streak${streak >= 2 ? ' is-hot' : ''}`}>
             <span className="readout-label">Streak</span>
             <span className="readout-value">
-              <FlapText text={String(streak).padStart(2, '0')} label={`Streak: ${streak} in a row`} size="lg" />
+              <FlapText text={String(streak).padStart(digits, '0')} label={`Streak: ${streak} in a row`} size="lg" />
             </span>
           </div>
           <div className="readout readout-end">

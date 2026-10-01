@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { questionsUrl } from './api';
 import { apiFetch } from './serverStatus';
-import Settings from './components/Settings';
+import { dealFromPack, OfflinePackError } from './offlinePack';
+import useOnline from './useOnline';
+import { FoldingSettings, SettingsToggle } from './components/Settings';
+import usePersistentFlag from './usePersistentFlag';
 import QuestionCard from './components/QuestionCard';
 import ResultsBoard from './components/ResultsBoard';
 import FlapText from './components/FlapText';
@@ -48,8 +51,11 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const settingsRef = useRef(null);
+  const [settingsOpen, setSettingsOpen] = usePersistentFlag('quizzr-solo-settings-open', true);
   const stageRef = useRef(null);
   const [round, setRound] = useState(0); // counts generated rounds, to bring each new one into view
+  const [playingOffline, setPlayingOffline] = useState(false); // this round came from the saved pack
+  const online = useOnline();
 
   // Time limit for this round (0 = none), fixed when the questions are generated
   const [timeLimit, setTimeLimit] = useState(0);
@@ -120,27 +126,49 @@ function Solo({ settings, onSettingsChange, onProgress }) {
     setOrder((prev) => [...prev, currentIndex]);
   }
 
-  function generate() {
-    setLoading(true);
-    setError('');
+  // Start a round from Open Trivia DB items, whether they came from the API or the saved pack
+  function startRound(items, fromPack) {
+    const limit = Number(settings.timer) || 0;
+    setQuestions(items.map(toQuestion));
+    setCurrentIndex(0);
+    setAnswers({});
+    setOrder([]);
+    setTimedOut({});
+    setTimeLimit(limit);
+    setDeadline(limit > 0 ? Date.now() + limit * 1000 : null);
+    setShowResults(false);
+    setPlayingOffline(fromPack);
+    setRound((r) => r + 1);
+  }
 
+  // Offline: deal from the questions saved in this browser instead
+  function playFromPack() {
+    try {
+      startRound(dealFromPack(settings), true);
+    } catch (e) {
+      setError(e instanceof OfflinePackError ? e.message : 'Could not start an offline round.');
+    }
+  }
+
+  function generate() {
+    setError('');
+    if (!navigator.onLine) {
+      playFromPack();
+      return;
+    }
+    setLoading(true);
     apiFetch(questionsUrl(settings))
       .then((response) => response.json())
       .then((data) => {
         if (!Array.isArray(data)) throw new Error(data.error || 'Failed to fetch questions');
-        const limit = Number(settings.timer) || 0;
-        setQuestions(data.map(toQuestion));
-        setCurrentIndex(0);
-        setAnswers({});
-        setOrder([]);
-        setTimedOut({});
-        setTimeLimit(limit);
-        setDeadline(limit > 0 ? Date.now() + limit * 1000 : null);
-        setShowResults(false);
-        setRound((r) => r + 1);
+        startRound(data, false);
       })
       .catch((error) => {
-        console.error('Error:', error);
+        // the connection dropped on the way: the saved questions can still carry a round
+        if (!navigator.onLine) {
+          playFromPack();
+          return;
+        }
         setError(error.message === 'Failed to fetch' ? 'Could not reach the server.' : error.message);
       })
       .finally(() => setLoading(false));
@@ -158,6 +186,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   }, [round]);
 
   function changeSettings() {
+    setSettingsOpen(true);
     settingsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     settingsRef.current?.querySelector('input, select, button')?.focus({ preventScroll: true });
   }
@@ -176,11 +205,16 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       <section className="board" aria-labelledby="solo-settings-title" ref={settingsRef}>
         <div className="board-head">
           <h2 className="board-title" id="solo-settings-title">Quiz settings</h2>
+          <SettingsToggle open={settingsOpen} onToggle={() => setSettingsOpen((o) => !o)} controls="solo-settings" />
         </div>
         <div className="board-body">
-          <Settings settings={settings} onChange={onSettingsChange} />
+          <FoldingSettings id="solo-settings" open={settingsOpen} settings={settings} onChange={onSettingsChange} />
           <div className="board-actions">
-            <p className="load-hint">Questions come from the Open Trivia Database and can take a few seconds to load.</p>
+            <p className="load-hint">
+              {online
+                ? 'Questions come from the Open Trivia Database and can take a few seconds to load.'
+                : 'Offline: questions come from the ones saved in this browser.'}
+            </p>
             {/* yellow marks the one thing to do now: only before there are questions */}
             <button className={total === 0 ? 'btn btn-primary' : 'btn'} onClick={generate} disabled={loading}>
               {loading ? 'Loading…' : total > 0 ? 'Generate New Questions' : 'Generate Questions'}
@@ -203,6 +237,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
         <ResultsBoard
           correct={score}
           total={total}
+          note={playingOffline ? 'Played offline, from questions saved in this browser.' : undefined}
           stats={[
             { label: 'Accuracy', value: `${Math.round((score / total) * 100)}%` },
             { label: 'Best streak', value: streak.best },

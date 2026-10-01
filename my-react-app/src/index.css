@@ -9,6 +9,9 @@
   --wall-ink: #161614;
   --wall-muted: #4c4943;
 
+  /* the station sign: off-white enamel, the same by day and by night (it's a painted object) */
+  --enamel: #f1ede4;
+
   /* the board */
   --board: #141413;
   --board-head: #1b1a18;
@@ -21,6 +24,7 @@
   --key-hover: #34322d;
   --key-edge: #3d3b35;
   --well: #0c0c0b;
+  --seam: rgba(0, 0, 0, 0.7); /* the split across the middle of every flap tile */
 
   /* board ink */
   --ink: #f1ede4;
@@ -43,6 +47,10 @@
 
   /* motion: one settle curve for everything that moves */
   --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* notices (waking up, reconnecting, a player away): a dashed outline in board ink,
+     so they never borrow a line colour, the signal or a status colour */
+  --notice: #8d887e;
 
   /* status on the board, always paired with a glyph and a word */
   --ok: #4fd98a;

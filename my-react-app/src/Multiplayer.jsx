@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiUrl, roomSocketUrl } from './api';
 import { apiFetch, track } from './serverStatus';
-import Settings, { SettingsSummary } from './components/Settings';
+import { FoldingSettings, SettingsSummary, SettingsToggle } from './components/Settings';
+import usePersistentFlag from './usePersistentFlag';
+import useFlipList from './useFlipList';
+import useOnline from './useOnline';
 import QuestionCard from './components/QuestionCard';
 import FlapText from './components/FlapText';
 import Icon from './components/Icon';
@@ -63,6 +66,8 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const [clockOffset, setClockOffset] = useState(0); // server clock minus ours, in milliseconds
   const [currentIndex, setCurrentIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const online = useOnline();
+  const [settingsOpen, setSettingsOpen] = usePersistentFlag('quizzr-room-settings-open', true);
 
   const socketRef = useRef(null);
   const seatRef = useRef(null); // { code, token, name } once the server has welcomed us
@@ -389,7 +394,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
               <h3 className="join-heading">Start a new room</h3>
               <p className="muted-text">You'll be the host and pick the quiz settings.</p>
               {/* one yellow key at a time: Join takes over once a whole code is typed */}
-              <button className={codeComplete ? 'btn' : 'btn btn-primary'} onClick={createRoom} disabled={connecting}>
+              <button className={codeComplete ? 'btn' : 'btn btn-primary'} onClick={createRoom} disabled={connecting || !online}>
                 {connecting ? 'Connecting…' : 'Create room'}
               </button>
             </div>
@@ -421,7 +426,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
                 </span>
               </div>
               <p className="code-caption" id="code-caption">The 5-letter room code from the host</p>
-              <button className={codeComplete ? 'btn btn-primary' : 'btn'} onClick={joinRoom} disabled={connecting}>
+              <button className={codeComplete ? 'btn btn-primary' : 'btn'} onClick={joinRoom} disabled={connecting || !online}>
                 {connecting ? 'Connecting…' : 'Join room'}
               </button>
             </div>
@@ -441,7 +446,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const current = questions[shownIndex];
   const hostControls = isHost && (
     <>
-      <Settings settings={settings} onChange={onSettingsChange} idPrefix="mp-" />
+      <FoldingSettings id="room-settings" open={settingsOpen} settings={settings} onChange={onSettingsChange} idPrefix="mp-" />
       <div className="board-actions">
         <p className="load-hint">Questions come from the Open Trivia Database and can take a few seconds to load.</p>
         <button className="btn btn-primary" onClick={startGame} disabled={phase === 'reconnecting'}>
@@ -498,7 +503,11 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
         <section className="board" aria-labelledby="lobby-title">
           <div className="board-head">
             <h2 className="board-title" id="lobby-title">Quiz settings</h2>
-            {!isHost && <span className="board-head-note">Chosen by {host?.name ?? 'the host'}</span>}
+            {isHost ? (
+              <SettingsToggle open={settingsOpen} onToggle={() => setSettingsOpen((o) => !o)} controls="room-settings" />
+            ) : (
+              <span className="board-head-note">Chosen by {host?.name ?? 'the host'}</span>
+            )}
           </div>
           <div className="board-body">
             {isHost ? (
@@ -534,6 +543,9 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
         <section className="board" aria-labelledby="results-title">
           <div className="board-head">
             <h2 className="board-title" id="results-title">Final results</h2>
+            {isHost && (
+              <SettingsToggle open={settingsOpen} onToggle={() => setSettingsOpen((o) => !o)} controls="room-settings" />
+            )}
           </div>
           <div className="board-body">
             <p className="winner">
@@ -633,6 +645,9 @@ function playerLine(id) {
 function Leaderboard({ room, myId }) {
   const playing = room.status === 'playing';
   const finished = room.status === 'finished';
+  // when someone overtakes someone else, the rows slide past each other
+  const listRef = useRef(null);
+  useFlipList(listRef, room.players.map((p) => p.id).join(','));
   return (
     <section className="board" aria-labelledby="players-title">
       <div className="board-head">
@@ -643,9 +658,9 @@ function Leaderboard({ room, myId }) {
           <span>Points</span>
         </span>
       </div>
-      <ol className="leaderboard">
+      <ol className="leaderboard" ref={listRef}>
         {room.players.map((player, i) => (
-          <li key={player.id} className={`${player.id === myId ? 'me' : ''}${player.connected ? '' : ' away'}`}>
+          <li key={player.id} data-flip-key={player.id} className={`${player.id === myId ? 'me' : ''}${player.connected ? '' : ' away'}`}>
             <span className="rank">{i + 1}</span>
             <span className="player-name">
               <span className={`player-line route-${playerLine(player.id)}`} aria-hidden="true" />

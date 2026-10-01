@@ -23,6 +23,7 @@ Built with React 19 + Vite on the front, FastAPI with WebSockets on the back, an
 - **Multiplayer:** create a room and share the code or invite link. The host picks the settings and everyone sees them live. Scoring is 100 points per correct answer plus up to 50 for speed, and the leaderboard updates as people answer.
   - With a **time limit**, the game runs in lockstep: one question at a time for everyone, closed by the server's clock.
 - **Rejoin after a dropped connection.** If your phone switches apps or you reload mid-game, you're put back in your seat with your answers and score.
+- **Works offline.** After one visit the app opens without a connection, and solo keeps playing from a pack of questions saved in the browser. The daily challenge and multiplayer say plainly that they need a connection.
 - **Play from the keyboard.** `A`–`D` choose, `Enter` submits, the arrow keys move between questions, and the mode tabs follow the ARIA tabs pattern.
 
 ## Architecture
@@ -68,7 +69,7 @@ You need Python 3.12+ and Node 22+.
 # API on http://localhost:8000
 cd backend
 pip install -r requirements.txt
-uvicorn apicall:app --reload --port 8000
+uvicorn apicall:app --reload --port 8000 --no-access-log
 ```
 
 ```bash

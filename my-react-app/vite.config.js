@@ -36,9 +36,80 @@ function preloadFonts() {
   }
 }
 
+// Offline support: a service worker written at build time, when the exact (hashed) file names
+// are known. It saves the whole built app on first visit so the page opens without a
+// connection. Pages are fetched network-first (so new releases arrive straight away) and
+// fall back to the saved copy; hashed assets are served from the cache. The API is never
+// cached: answers, rooms and leaderboards always come from the server.
+function serviceWorker() {
+  return {
+    name: 'service-worker',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      const files = Object.keys(bundle).filter((file) => !file.endsWith('.map'))
+      const statics = ['favicon.svg', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']
+      const precache = ['/', ...files.map((f) => `/${f}`), ...statics.map((f) => `/${f}`)]
+      // the cache name changes whenever any built file does, so old caches get cleared out
+      let hash = 0
+      for (const ch of files.sort().join('|')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
+      const source = `// Generated at build time by vite.config.js. Don't edit by hand.
+const CACHE = 'quizzr-${hash.toString(36)}';
+const PRECACHE = ${JSON.stringify(precache)};
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('quizzr-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+  // only this site's own files; never the API, never other sites
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
+  if (request.mode === 'navigate') {
+    // the page: the network first, so new releases show up; the saved copy when offline
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put('/', copy));
+          return response;
+        })
+        .catch(() => caches.match('/', { ignoreVary: true }))
+    );
+    return;
+  }
+
+  // everything else is a built file whose name changes when its content does: cache first.
+  // ignoreVary: scripts and fonts are requested with an Origin header (crossorigin) that the
+  // install-time copies lacked; with hashed names, a saved copy is right whatever the headers.
+  event.respondWith(
+    caches.match(request, { ignoreVary: true }).then((hit) => hit || fetch(request).then((response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    }))
+  );
+});
+`
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), absoluteShareLinks(), preloadFonts()],
+  plugins: [react(), absoluteShareLinks(), preloadFonts(), serviceWorker()],
   server: {
     // Forward API calls and multiplayer WebSockets to the FastAPI server during development
     proxy: {

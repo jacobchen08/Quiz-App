@@ -301,49 +301,15 @@
     position: absolute;
     inset: calc(50% - 0.5px) 0 auto;
     height: 1px;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--seam);
   }
 }
 
 /* ---------- Hall wall: station sign + platform switch ---------- */
-.header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px 32px;
-  flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 4px solid var(--wall-ink);
-
-  h1 {
-    margin: 0;
-    font-family: var(--condensed);
-    font-size: clamp(44px, 9vw, 76px);
-    font-weight: 800;
-    line-height: 0.9;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
-    color: var(--wall-ink);
-  }
-
-  p {
-    margin: 0;
-    max-width: 30ch;
-    font-size: 16px;
-    line-height: 1.4;
-    color: var(--wall-muted);
-
-    @media (min-width: 641px) {
-      text-align: right;
-    }
-  }
-}
-
 .mode-tabs {
   position: relative;
   display: flex;
   gap: 8px;
-  margin-top: -8px;
 
   button {
     position: relative;
@@ -534,7 +500,7 @@
     inset: calc(50% - 0.5px) 0 auto;
     z-index: 2;
     height: 1px;
-    background: rgba(0, 0, 0, 0.75);
+    background: var(--seam);
   }
 }
 
@@ -1418,7 +1384,7 @@ input[type='text'] {
     position: absolute;
     inset: calc(50% - 0.5px) 0 auto;
     height: 1px;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--seam);
   }
 
   /* a lit status tile is one solid plate; the seam would read as a strikethrough */
@@ -1726,7 +1692,7 @@ input[type='text'] {
 
   .icon {
     flex: none;
-    color: var(--signal);
+    color: var(--ink);
   }
 }
 
@@ -1835,8 +1801,9 @@ input[type='text'] {
     display: none;
   }
 
+  /* a streak going: the label brightens from dim to full ink (yellow is kept for "now") */
   &.is-hot .readout-label {
-    color: var(--signal);
+    color: var(--ink);
   }
 }
 
@@ -1866,37 +1833,6 @@ input[type='text'] {
   font-weight: 700;
   line-height: 1.15;
   color: var(--ink);
-}
-
-.results-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1px;
-  margin: 0 0 22px;
-  border: 1px solid var(--board-edge);
-  border-radius: var(--radius-key);
-  background: var(--board-edge);
-  overflow: hidden;
-
-  div {
-    padding: 12px 16px;
-    background: var(--row);
-  }
-  dt {
-    font-family: var(--condensed);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-  }
-  dd {
-    margin: 4px 0 0;
-    font-family: var(--condensed);
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--ink);
-  }
 }
 
 .results-stats-compact {
@@ -1958,25 +1894,6 @@ input[type='text'] {
   font-weight: 700;
 }
 
-.missed-answer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0 0;
-  padding-left: 36px;
-  font-size: 15px;
-
-  .icon {
-    flex: none;
-  }
-  &.is-wrong {
-    color: var(--bad);
-  }
-  &.is-right {
-    color: var(--ok);
-  }
-}
-
 /* the shareable result looks like the text it is: a torn-off slip */
 .share {
   margin-top: 26px;
@@ -2014,11 +1931,11 @@ input[type='text'] {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border-color: var(--line-orange);
+  border: 1px dashed var(--notice);
 
   .icon {
     flex: none;
-    color: var(--line-orange);
+    color: var(--ink);
   }
 }
 
@@ -2035,16 +1952,17 @@ input[type='text'] {
 }
 
 .badge-away {
-  border-color: var(--line-orange);
-  color: var(--line-orange);
+  border-style: dashed;
+  border-color: var(--notice);
+  color: var(--ink-dim);
 }
 
 .badge-streak {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  border-color: var(--line-orange);
-  color: var(--line-orange);
+  border-color: var(--ink-dim);
+  color: var(--ink);
 }
 
 /* ---------- Daily challenge ---------- */
@@ -2179,7 +2097,8 @@ input[type='text'] {
 
 /* ---------- Waking the server up ---------- */
 .wake {
-  border-color: var(--line-orange);
+  border-style: dashed;
+  border-color: var(--notice);
 
   .board-body {
     display: flex;
@@ -2317,17 +2236,17 @@ input[type='text'] {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  padding-bottom: 0;
-  border-bottom: 0;
 
   > p {
     max-width: 60ch;
-    text-align: left;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--wall-muted);
   }
 }
 
 .sign {
-  --enamel: #f1ede4; /* the same off-white enamel by day and by night: it's a painted object */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2354,8 +2273,6 @@ input[type='text'] {
   }
 
   .mode-tabs {
-    margin-top: 0;
-
     button {
       border-color: color-mix(in srgb, var(--board) 30%, transparent);
       color: var(--board);
@@ -2387,12 +2304,8 @@ input[type='text'] {
 
 /* ---------- Results: numbers as departure rows, not tiles ---------- */
 .results-stats {
-  display: block;
-  gap: 0;
-  border: 0;
+  margin: 0 0 22px;
   border-top: 1px solid var(--board-edge);
-  border-radius: 0;
-  background: none;
 
   div {
     display: flex;
@@ -2400,12 +2313,22 @@ input[type='text'] {
     justify-content: space-between;
     gap: 16px;
     padding: 10px 2px;
-    background: none;
     border-bottom: 1px solid var(--board-edge);
+  }
+  dt {
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
   }
   dd {
     margin: 0;
+    font-family: var(--condensed);
     font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
   }
 }
 
@@ -2436,6 +2359,7 @@ input[type='text'] {
 .missed-answer {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   margin: 0;
   padding: 8px 12px;
@@ -2556,8 +2480,260 @@ input[type='text'] {
   color: var(--ink-dim);
 }
 
-/* an older rule centred these; the label and answer read left to right like the rest of the row */
-.missed-answer {
-  align-items: flex-start;
-  text-align: left;
+/* ---------- The seam on every number tile ---------- */
+.log-num,
+.missed-num,
+.rank {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    height: 1px;
+    background: var(--seam);
+  }
+}
+
+/* a lit tile is one solid plate, like the answer letters */
+.log-row[aria-current='true'] .log-num::after,
+.me .rank::after {
+  display: none;
+}
+
+/* ---------- Folding the settings away ---------- */
+.board-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .icon {
+    transition: transform 320ms var(--ease-settle);
+  }
+  .icon.is-open {
+    transform: rotate(180deg);
+  }
+}
+
+/* the settings fold shut by animating their row to nothing, so nothing jumps */
+.folding {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 360ms var(--ease-settle), opacity 240ms ease-out;
+
+  &[data-open='false'] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+.folding-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* while folded, the choices read as one line above the Generate key */
+.settings-line {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* the board has less to say when folded, so its actions sit closer */
+.folding[data-open='false'] ~ .board-actions {
+  margin-top: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folding,
+  .board-toggle .icon {
+    transition: none;
+  }
+}
+
+/* ======================================================================
+   Motion: the moments that used to jump
+   One curve throughout (--ease-settle). Everything starts from its normal, visible state:
+   the keyframes only describe where things come from.
+   ====================================================================== */
+
+@keyframes settle-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes settle-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes fade-only {
+  from {
+    opacity: 0;
+  }
+}
+
+/* An answer's verdict rises in under the answers it describes */
+.feedback {
+  animation: settle-up 300ms var(--ease-settle) backwards;
+}
+
+/* Errors and notices drop in from the board above them */
+.error,
+.banner,
+.banner-inline,
+.wake {
+  animation: settle-down 340ms var(--ease-settle) backwards;
+}
+
+/* ---- The focal moment: the results arrive like departures being posted ----
+   The score flips in on its tiles, then the verdict, then each row in turn. The whole
+   sequence is done in well under a second, and nothing waits on it. */
+.results-verdict,
+.winner {
+  animation: settle-up 420ms var(--ease-settle) 220ms backwards;
+}
+
+.results-stats > div,
+.results-subhead,
+.missed > li,
+.results .share,
+.results-actions,
+.results-note {
+  animation: row-in 420ms var(--ease-settle) backwards;
+  animation-delay: 320ms;
+}
+.results-stats > div:nth-child(2) {
+  animation-delay: 380ms;
+}
+.results-stats > div:nth-child(3) {
+  animation-delay: 440ms;
+}
+.results-stats > div:nth-child(n + 4) {
+  animation-delay: 500ms;
+}
+.results-subhead {
+  animation-delay: 480ms;
+}
+.missed > li:nth-child(1) {
+  animation-delay: 540ms;
+}
+.missed > li:nth-child(2) {
+  animation-delay: 600ms;
+}
+.missed > li:nth-child(3) {
+  animation-delay: 660ms;
+}
+.missed > li:nth-child(n + 4) {
+  animation-delay: 700ms; /* long lists don't keep the player waiting */
+}
+.results .share,
+.results-note {
+  animation-delay: 620ms;
+}
+.results-actions {
+  animation-delay: 680ms;
+}
+
+/* Small acknowledgements */
+.settings-line {
+  animation: fade-only 260ms ease-out backwards;
+}
+.share-status:not(:empty),
+.submit-hint {
+  animation: fade-only 220ms ease-out;
+}
+
+/* A selected answer row eases into its lit state rather than snapping */
+.answer.selected {
+  transition-duration: 0.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* the same moments, as a plain fade: state still changes visibly, nothing travels */
+  .feedback,
+  .error,
+  .banner,
+  .banner-inline,
+  .wake,
+  .results-verdict,
+  .winner,
+  .results-stats > div,
+  .results-subhead,
+  .missed > li,
+  .results .share,
+  .results-actions,
+  .results-note {
+    animation-name: fade-only;
+    animation-delay: 0ms;
+  }
+}
+
+/* ---------- Notices: offline ---------- */
+.notice {
+  border-style: dashed;
+  border-color: var(--notice);
+  animation: settle-down 340ms var(--ease-settle) backwards;
+
+  .board-body {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .icon {
+    flex: none;
+    color: var(--ink);
+  }
+}
+
+.notice-title {
+  margin: 0 0 4px;
+  font-family: var(--condensed);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.notice-text {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice {
+    animation-name: fade-only;
+  }
 }

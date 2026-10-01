@@ -31,7 +31,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `${python} -m uvicorn --app-dir ../backend apicall:app --port ${API_PORT}`,
+      command: `${python} -m uvicorn --app-dir ../backend apicall:app --port ${API_PORT} --no-access-log`,
       url: `http://localhost:${API_PORT}/api/health`,
       env: {
         QUIZZR_OFFLINE_TRIVIA: '1',
@@ -43,7 +43,8 @@ export default defineConfig({
     {
       command: `npx vite --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
-      env: { API_PROXY_TARGET: `http://localhost:${API_PORT}` },
+      // save the offline question pack quickly, so the offline test needn't wait 15 seconds
+      env: { API_PROXY_TARGET: `http://localhost:${API_PORT}`, VITE_OFFLINE_PACK_DELAY: '300' },
       reuseExistingServer: false,
       timeout: 60_000,
     },

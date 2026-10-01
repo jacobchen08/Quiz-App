@@ -45,6 +45,12 @@ const paths = {
     </>
   ),
   bolt: <path d="M13 3L5 13.5h6L10 21l9-11h-6l1-7z" />,
+  offline: (
+    <>
+      <path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0" />
+      <path d="M12 19.5h.01M3 3l18 18" />
+    </>
+  ),
   alert: (
     <>
       <path d="M12 4l9 16H3l9-16z" />

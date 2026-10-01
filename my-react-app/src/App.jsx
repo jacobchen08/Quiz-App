@@ -1,10 +1,12 @@
 import './App.css';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useIndicator from './useIndicator';
 import Solo from './Solo';
 import Multiplayer from './Multiplayer';
 import Daily from './Daily';
 import WakeBanner from './components/WakeBanner';
+import OfflineBanner from './components/OfflineBanner';
+import { refillPack } from './offlinePack';
 import { AnswerLog, HowToPlay, LineMap, RoundBoard } from './components/SideBoards';
 
 const defaultSettings = { amount: 10, category: '', difficulty: '', type: '', timer: '' };
@@ -57,6 +59,19 @@ function App() {
   const onDailyProgress = useCallback((p) => setProgress((prev) => ({ ...prev, daily: p })), []);
   const onMultiProgress = useCallback((p) => setProgress((prev) => ({ ...prev, multi: p })), []);
 
+  // Keep a pack of questions saved for offline solo play. It waits until the page has settled
+  // (so it never competes with the first quiz for the trivia service's one-request-per-five-
+  // seconds allowance), and tops up again whenever the connection comes back.
+  useEffect(() => {
+    const delay = Number(import.meta.env.VITE_OFFLINE_PACK_DELAY ?? 15000);
+    const timer = setTimeout(refillPack, delay);
+    window.addEventListener('online', refillPack);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', refillPack);
+    };
+  }, []);
+
   return (
     <div className="App">
       <header className="header">
@@ -95,6 +110,7 @@ function App() {
 
       <div className="main-col">
         <WakeBanner />
+        <OfflineBanner />
 
         {/* All stay mounted so switching tabs doesn't lose your quiz or kick you out of a room */}
         <div className="mode-panel" id="panel-solo" role="tabpanel" aria-labelledby="tab-solo" hidden={mode !== 'solo'}>

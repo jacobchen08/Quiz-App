@@ -130,6 +130,45 @@ function Settings({ settings, onChange, idPrefix = "" }) {
   );
 }
 
+// The settings on one line, for when the settings board is folded away
+export function SettingsLine({ settings }) {
+  const label = (list, value) => list.find((o) => o.value === (value ?? ''))?.label ?? 'Any';
+  const amount = Number(settings.amount) || 10;
+  const difficulty = settings.difficulty ? label(difficultyOptions, settings.difficulty) : 'Any difficulty';
+  const type = settings.type ? label(types, settings.type) : 'Any type';
+  const timer = settings.timer ? `${settings.timer} sec per question` : 'No time limit';
+  return (
+    <p className="settings-line">
+      {[`${amount} question${amount === 1 ? '' : 's'}`, categoryById(settings.category).name, difficulty, type, timer].join(' · ')}
+    </p>
+  );
+}
+
+// The button that folds the settings away and back
+export function SettingsToggle({ open, onToggle, controls }) {
+  return (
+    <button type="button" className="board-toggle" aria-expanded={open} aria-controls={controls} onClick={onToggle}>
+      <Icon name="chevron-down" className={open ? 'is-open' : ''} />
+      {open ? 'Hide settings' : 'Show settings'}
+    </button>
+  );
+}
+
+// The settings themselves, folding shut when hidden. While shut they're also inert, so
+// keyboard and screen reader users don't land in controls they can't see.
+export function FoldingSettings({ id, open, settings, onChange, idPrefix }) {
+  return (
+    <>
+      <div id={id} className="folding" data-open={open} inert={!open}>
+        <div className="folding-inner">
+          <Settings settings={settings} onChange={onChange} idPrefix={idPrefix} />
+        </div>
+      </div>
+      {!open && <SettingsLine settings={settings} />}
+    </>
+  );
+}
+
 // The same choices, read-only: what guests in a room see while the host decides
 export function SettingsSummary({ settings }) {
   const label = (list, value) => list.find((o) => o.value === (value ?? ''))?.label ?? 'Any';

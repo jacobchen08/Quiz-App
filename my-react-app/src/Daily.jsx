@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { daily } from './api';
+import useFlipList from './useFlipList';
+import useOnline from './useOnline';
 import QuestionCard from './components/QuestionCard';
 import ResultsBoard from './components/ResultsBoard';
 import FlapText from './components/FlapText';
@@ -57,7 +59,12 @@ function nextChallengeLabel(date) {
   return next.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+const entryKey = (entry) => `${entry.name}|${entry.correct}|${entry.seconds}`;
+
 function DailyLeaderboard({ board, total }) {
+  // a new finisher slots in and the rows below slide down to make room
+  const listRef = useRef(null);
+  useFlipList(listRef, board ? board.entries.map(entryKey).join(',') : '');
   if (!board) return null;
   return (
     <section className="board" aria-labelledby="daily-board-title">
@@ -71,9 +78,9 @@ function DailyLeaderboard({ board, total }) {
       {board.entries.length === 0 ? (
         <p className="log-empty">Nobody has finished today's challenge yet. You could be first.</p>
       ) : (
-        <ol className="leaderboard daily-board">
+        <ol className="leaderboard daily-board" ref={listRef}>
           {board.entries.map((entry) => (
-            <li key={`${entry.rank}-${entry.name}`} className={entry.you ? 'me' : ''}>
+            <li key={entryKey(entry)} data-flip-key={entryKey(entry)} className={entry.you ? 'me' : ''}>
               <span className="rank">{entry.rank}</span>
               <span className="player-name">
                 {entry.name}
@@ -106,6 +113,7 @@ function Daily({ onProgress }) {
   const [showResults, setShowResults] = useState(false);
   const [board, setBoard] = useState(null);
   const [starting, setStarting] = useState(false);
+  const online = useOnline();
   const [justStarted, setJustStarted] = useState(0); // bumps on Start, to bring question 1 into view
   const stageRef = useRef(null);
 
@@ -254,7 +262,7 @@ function Daily({ onProgress }) {
                 onKeyDown={(e) => e.key === 'Enter' && start()}
               />
             </div>
-            <button className="btn btn-primary" onClick={start} disabled={starting}>
+            <button className="btn btn-primary" onClick={start} disabled={starting || !online}>
               {starting ? 'Starting…' : "Start today's challenge"}
             </button>
           </div>

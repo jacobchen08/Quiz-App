@@ -11,7 +11,7 @@ const markLabel = { correct: 'correct', wrong: 'wrong', pending: 'checking', tim
 export function AnswerLog({ progress }) {
   const { items = [], index = 0, jump } = progress ?? {};
   const listRef = useRef(null);
-  const digits = Math.max(2, String(items.length).length);
+  const digits = String(items.length).length;
 
   // Keep the current row in view inside the board without scrolling the page
   useEffect(() => {
@@ -86,7 +86,8 @@ export function RoundBoard({ progress }) {
   const { answered = 0, correct = 0, total = 0, streak = 0 } = progress ?? {};
   const started = total > 0;
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
-  const digits = Math.max(2, String(total).length);
+  // as many digits as the total has (one for a round under ten); blank two-digit tiles while idle
+  const digits = total > 0 ? String(total).length : 2;
 
   return (
     <section className="board" aria-labelledby="round-title">
@@ -118,8 +119,8 @@ export function RoundBoard({ progress }) {
           <dt>Streak</dt>
           <dd>
             <FlapText
-              text={started ? String(streak).padStart(2, '0') : ''}
-              length={2}
+              text={started ? String(streak).padStart(digits, '0') : ''}
+              length={digits}
               label={started ? `${streak} in a row` : 'None yet'}
             />
           </dd>

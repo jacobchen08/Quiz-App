@@ -23,6 +23,12 @@ describe('flipPath', () => {
     expect(long[0]).toBe('R'); // the last nine characters before Z
   });
 
+  it('flips separators straight there, so "4/9" never passes through "4 7 9"', () => {
+    expect(flipPath(' ', '/')).toEqual(['/']);
+    expect(flipPath(' ', '%')).toEqual(['%']);
+    expect(flipPath(' ', ':')).toEqual([':']);
+  });
+
   it("doesn't move when there's nothing to change", () => {
     expect(flipPath('Q', 'Q')).toEqual([]);
   });
