@@ -18,4 +18,4 @@ COPY --from=frontend /app/my-react-app/dist my-react-app/dist
 
 WORKDIR /app/backend
 # Hosting services tell the app which port to use through $PORT
-CMD ["sh", "-c", "uvicorn apicall:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn apicall:app --host 0.0.0.0 --port ${PORT:-8000} --no-access-log"]

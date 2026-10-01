@@ -18,6 +18,77 @@ class FakeResponse:
         return self.payload
 
 
+@pytest.fixture(autouse=True)
+def no_session_token(monkeypatch, request):
+    """Most tests are about the question URL itself, so run them without a session token."""
+    trivia.session_token.forget()
+    if "with_token" not in request.keywords:
+        monkeypatch.setattr(trivia.session_token, "get", lambda: None)
+    yield
+    trivia.session_token.forget()
+
+
+class FakeTriviaService:
+    """Plays both Open Trivia DB endpoints: the token service and the question service."""
+
+    def __init__(self, question_codes, token_works=True):
+        self.question_codes = list(question_codes)  # response code for each question request
+        self.token_works = token_works
+        self.issued = 0
+        self.calls = []
+
+    def get(self, url, timeout, params=None):
+        if url == trivia.TOKEN_URL:
+            self.calls.append(("token", params["command"]))
+            if not self.token_works:
+                raise requests.ConnectionError("token service down")
+            if params["command"] == "request":
+                self.issued += 1
+                return FakeResponse({"response_code": 0, "token": f"tok{self.issued}"})
+            return FakeResponse({"response_code": 0, "token": params["token"]})  # reset
+        self.calls.append(("questions", url))
+        code = self.question_codes.pop(0)
+        return FakeResponse({"response_code": code, "results": ["q"] if code == 0 else []})
+
+
+@pytest.mark.with_token
+def test_questions_are_asked_for_with_the_session_token(monkeypatch):
+    service = FakeTriviaService([0, 0])
+    monkeypatch.setattr(trivia.requests, "get", service.get)
+    fetch_questions(5)
+    fetch_questions(5)
+    question_urls = [url for kind, url in service.calls if kind == "questions"]
+    assert all(url.endswith("&token=tok1") for url in question_urls)
+    assert service.issued == 1  # one token, reused
+
+
+@pytest.mark.with_token
+def test_a_used_up_token_is_reset_and_the_request_retried(monkeypatch):
+    service = FakeTriviaService([4, 0])
+    monkeypatch.setattr(trivia.requests, "get", service.get)
+    assert fetch_questions(5) == ["q"]
+    assert ("token", "reset") in service.calls
+
+
+@pytest.mark.with_token
+def test_an_expired_token_is_replaced(monkeypatch):
+    service = FakeTriviaService([3, 0])
+    monkeypatch.setattr(trivia.requests, "get", service.get)
+    assert fetch_questions(5) == ["q"]
+    question_urls = [url for kind, url in service.calls if kind == "questions"]
+    assert question_urls[0].endswith("&token=tok1")
+    assert question_urls[1].endswith("&token=tok2")
+
+
+@pytest.mark.with_token
+def test_quizzes_still_work_when_the_token_service_is_down(monkeypatch):
+    service = FakeTriviaService([0], token_works=False)
+    monkeypatch.setattr(trivia.requests, "get", service.get)
+    assert fetch_questions(5) == ["q"]
+    question_urls = [url for kind, url in service.calls if kind == "questions"]
+    assert "token=" not in question_urls[0]
+
+
 @pytest.fixture
 def captured(monkeypatch):
     """Record the URL fetch_questions asks for, and answer with a chosen payload."""

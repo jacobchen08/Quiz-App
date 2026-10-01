@@ -3,7 +3,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 import database
@@ -13,13 +13,14 @@ from trivia import TriviaError, fetch_questions, prepare_question, public_questi
 
 # Daily challenge: everyone gets the same questions each day (UTC), like Wordle.
 #
-# 1. GET  /api/daily?token=...        today's date and, if you've started, your questions and answers
+# 1. GET  /api/daily                  today's date and, if you've started, your questions and answers
 # 2. POST /api/daily/start            {token, name} starts your clock and returns the questions
 # 3. POST /api/daily/answer           {token, index, answer} checks one answer on the server
 # 4. GET  /api/daily/leaderboard      today's finishers: most correct first, then fastest
 #
 # There are no accounts. The browser makes up a random token and keeps it, and one token
-# gets one go per day. Correct answers only leave the server once that question is answered.
+# gets one go per day. On GET requests the token travels in the X-Quizzr-Token header, never
+# in the URL, so it can't end up in access logs, browser history or a proxy's records. Correct answers only leave the server once that question is answered.
 #
 # Results are kept in Postgres when DATABASE_URL is set, or a SQLite file otherwise;
 # see database.py.
@@ -161,7 +162,7 @@ class AnswerBody(BaseModel):
 
 
 @router.get("")
-def get_daily(token: str = ""):
+def get_daily(token: str = Header(default="", alias="X-Quizzr-Token", max_length=64)):
     date = today()
     questions = todays_questions(date)
     with db() as conn:
@@ -244,7 +245,7 @@ def answer_daily(body: AnswerBody):
 
 
 @router.get("/leaderboard")
-def daily_leaderboard(token: str = ""):
+def daily_leaderboard(token: str = Header(default="", alias="X-Quizzr-Token", max_length=64)):
     date = today()
     with db() as conn:
         ranking = finished_ranking(conn, date)

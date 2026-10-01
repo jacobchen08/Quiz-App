@@ -54,12 +54,20 @@ def play(client, token, answers):
 
 
 def test_questions_stay_hidden_until_you_start(client):
-    before = client.get("/api/daily", params={"token": "token-ann-1"}).json()
+    before = client.get("/api/daily", headers={"X-Quizzr-Token": "token-ann-1"}).json()
     assert before["questions"] is None and before["player"] is None and before["total"] == 10
 
     started = start(client, "token-ann-1")
     assert len(started["questions"]) == 10
     assert all("correct" not in q for q in started["questions"])
+
+
+def test_the_token_is_read_from_the_header_and_never_the_url(client):
+    start(client, "token-ann-1")
+    from_header = client.get("/api/daily", headers={"X-Quizzr-Token": "token-ann-1"}).json()
+    from_url = client.get("/api/daily", params={"token": "token-ann-1"}).json()
+    assert from_header["player"]["name"] == "Ann"
+    assert from_url["player"] is None  # a token in the URL would end up in access logs
 
 
 def test_everyone_gets_the_same_questions_fetched_once(client):
@@ -112,12 +120,12 @@ def test_leaderboard_ranks_most_correct_then_fastest(client):
                 "UPDATE daily_players SET started_at = finished_at - ? WHERE token = ?", (seconds, token)
             )
 
-    board = client.get("/api/daily/leaderboard", params={"token": "token-half"}).json()
+    board = client.get("/api/daily/leaderboard", headers={"X-Quizzr-Token": "token-half"}).json()
     assert [e["name"] for e in board["entries"]] == ["Quick", "Slow", "Half"]
     assert [e["correct"] for e in board["entries"]] == [10, 10, 5]
     assert [e["you"] for e in board["entries"]] == [False, False, True]
 
-    view = client.get("/api/daily", params={"token": "token-quick-perfect"}).json()["player"]
+    view = client.get("/api/daily", headers={"X-Quizzr-Token": "token-quick-perfect"}).json()["player"]
     assert view["finished"] and view["rank"] == 1 and view["finishers"] == 3
 
 

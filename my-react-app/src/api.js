@@ -38,10 +38,11 @@ function post(body) {
 }
 
 export const daily = {
-  load: (token) => dailyRequest(`?token=${encodeURIComponent(token)}`),
+  // the token goes in a header, never the URL, so it stays out of logs and history
+  load: (token) => dailyRequest('', { headers: { 'X-Quizzr-Token': token } }),
   start: (token, name) => dailyRequest('/start', post({ token, name })),
   answer: (token, index, answer) => dailyRequest('/answer', post({ token, index, answer })),
-  leaderboard: (token) => dailyRequest(`/leaderboard?token=${encodeURIComponent(token)}`),
+  leaderboard: (token) => dailyRequest('/leaderboard', { headers: { 'X-Quizzr-Token': token } }),
 };
 
 export function roomSocketUrl(code) {

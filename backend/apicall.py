@@ -13,7 +13,9 @@ from multiplayer import router as multiplayer_router
 from ratelimit import RateLimiter, limited
 from trivia import TriviaError, fetch_questions
 
-# Run locally:  cd backend  then  uvicorn apicall:app --reload --port 8000
+# Run locally:  cd backend  then  uvicorn apicall:app --reload --port 8000 --no-access-log
+# (the app writes its own structured request log below; uvicorn's access log would only
+# duplicate it, and it records full URLs)
 
 logs.configure()
 app = FastAPI(title="Quizzr API")
@@ -31,7 +33,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Quizzr-Token"],
 )
 
 
