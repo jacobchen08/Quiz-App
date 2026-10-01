@@ -1,0 +1,72 @@
+/* Line colours: categories, difficulty and players each get a line colour, like train lines,
+   always paired with a code, a count or a name, never colour alone. */
+
+.route-blue,
+.accent-blue {
+  --line: var(--line-blue);
+  --accent: var(--line-blue);
+}
+.route-magenta,
+.accent-magenta {
+  --line: var(--line-magenta);
+  --accent: var(--line-magenta);
+}
+.route-teal,
+.accent-teal {
+  --line: var(--line-teal);
+  --accent: var(--line-teal);
+}
+.route-orange,
+.accent-orange {
+  --line: var(--line-orange);
+  --accent: var(--line-orange);
+}
+.route-violet,
+.accent-violet {
+  --line: var(--line-violet);
+  --accent: var(--line-violet);
+}
+
+/* a route bullet: the category's line code on its line colour */
+.route {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  height: 24px;
+  min-width: 38px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--line);
+  color: var(--signal-ink);
+  font-family: var(--condensed);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  animation: route-flip 380ms var(--ease-settle) backwards;
+}
+
+.route-sm {
+  height: 20px;
+  min-width: 32px;
+  font-size: 12px;
+}
+
+.route-any {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ink-faint);
+  color: var(--ink-dim);
+}
+
+@keyframes route-flip {
+  from {
+    opacity: 0;
+    transform: perspective(200px) rotateX(-90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route {
+    animation: none !important;
+  }
+}

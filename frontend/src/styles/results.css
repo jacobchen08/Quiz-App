@@ -1,0 +1,323 @@
+/* The results board (components/ResultsBoard.jsx and ShareResult.jsx): the score, the stats,
+   every missed question, and the shareable result slip. */
+
+.results-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+  margin-bottom: 24px;
+}
+
+.results-verdict {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: clamp(24px, 3.2vw, 30px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.results-note {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+.results-subhead {
+  margin: 26px 0 10px;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.missed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 14px 0 16px;
+    border-top: 1px solid var(--board-edge);
+  }
+}
+
+.missed-question {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink);
+
+  .route {
+    margin-top: 1px;
+  }
+}
+
+.missed-num {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 26px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 700;
+
+  /* the seam across the middle of the tile */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    height: 1px;
+    background: var(--seam);
+  }
+}
+
+/* the shareable result looks like the text it is: a torn-off slip */
+.share {
+  margin-top: 26px;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+
+.share-status {
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--board-edge);
+
+  .btn-primary {
+    min-width: 200px;
+  }
+}
+
+/* ---------- Results: numbers as departure rows, not tiles ---------- */
+.results-stats {
+  margin: 0 0 22px;
+  border-top: 1px solid var(--board-edge);
+
+  div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--board-edge);
+  }
+  dt {
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  dd {
+    margin: 0;
+    font-family: var(--condensed);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+}
+
+/* ---------- Missed questions: the same rows as the Answers board ---------- */
+.missed-answers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 38px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+    padding-left: 0;
+  }
+}
+
+.missed-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--row);
+
+  dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  dd {
+    margin: 0;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  &.is-wrong {
+    border-color: color-mix(in srgb, var(--bad) 55%, var(--key-edge));
+    dt {
+      color: var(--bad);
+    }
+  }
+  &.is-right {
+    border-color: color-mix(in srgb, var(--ok) 55%, var(--key-edge));
+    dt {
+      color: var(--ok);
+    }
+  }
+}
+
+/* ---------- The share slip: a printed ticket, marks as tiles ---------- */
+.share-card {
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--board-edge);
+  border-radius: 0; /* a printed slip has square corners */
+  /* the slip's header strip, in board ink: yellow only ever marks now */
+  box-shadow: inset 0 4px 0 var(--board-edge);
+  background: var(--row);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+
+  p {
+    margin: 0;
+  }
+  .share-title {
+    font-family: var(--condensed);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .share-line {
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+}
+
+.share-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid var(--key-edge);
+  background: var(--tile-bottom);
+
+  &.correct {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+  &.wrong {
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+}
+
+/* ---- The focal moment: the results arrive like departures being posted ----
+   The score flips in on its tiles, then the verdict, then each row in turn. The whole
+   sequence is done in well under a second, and nothing waits on it. */
+.results-verdict {
+  animation: settle-up 420ms var(--ease-settle) 220ms backwards;
+}
+
+.results-stats > div,
+.results-subhead,
+.missed > li,
+.results .share,
+.results-actions,
+.results-note {
+  animation: row-in 420ms var(--ease-settle) backwards;
+  animation-delay: 320ms;
+}
+.results-stats > div:nth-child(2) {
+  animation-delay: 380ms;
+}
+.results-stats > div:nth-child(3) {
+  animation-delay: 440ms;
+}
+.results-stats > div:nth-child(n + 4) {
+  animation-delay: 500ms;
+}
+.results-subhead {
+  animation-delay: 480ms;
+}
+.missed > li:nth-child(1) {
+  animation-delay: 540ms;
+}
+.missed > li:nth-child(2) {
+  animation-delay: 600ms;
+}
+.missed > li:nth-child(3) {
+  animation-delay: 660ms;
+}
+.missed > li:nth-child(n + 4) {
+  animation-delay: 700ms; /* long lists don't keep the player waiting */
+}
+.results .share,
+.results-note {
+  animation-delay: 620ms;
+}
+.results-actions {
+  animation-delay: 680ms;
+}
+
+.share-status:not(:empty) {
+  animation: fade-only 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* the same moments, as a plain fade: state still changes visibly, nothing travels */
+  .results-verdict,
+  .results-stats > div,
+  .results-subhead,
+  .missed > li,
+  .results .share,
+  .results-actions,
+  .results-note {
+    animation-name: fade-only;
+    animation-delay: 0ms;
+  }
+}

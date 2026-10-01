@@ -69,12 +69,12 @@ You need Python 3.12+ and Node 22+.
 # API on http://localhost:8000
 cd backend
 pip install -r requirements.txt
-uvicorn apicall:app --reload --port 8000 --no-access-log
+uvicorn main:app --reload --port 8000 --no-access-log
 ```
 
 ```bash
 # App on http://localhost:5173 (forwards /api to port 8000)
-cd my-react-app
+cd frontend
 npm install
 npm run dev
 ```
@@ -84,8 +84,8 @@ npm run dev
 | Suite | Command | What it covers |
 | --- | --- | --- |
 | Backend | `pip install -r backend/requirements-dev.txt` then `python -m pytest backend` | Question fetching and retries, multiplayer rooms (scoring, streaks, held seats, timed lockstep, shared settings), the daily challenge, rate limits |
-| Frontend | `npm test` (in `my-react-app`) | Components and scoring helpers, including keyboard play and timed states |
-| End-to-end | `npm run test:e2e` (in `my-react-app`) | Real browsers: a keyboard-played solo round, a timed question, the daily challenge, a two-player timed game with a reload mid-game, and WCAG 2.2 AA checks in light and dark |
+| Frontend | `npm test` (in `frontend`) | Components and scoring helpers, including keyboard play and timed states |
+| End-to-end | `npm run test:e2e` (in `frontend`) | Real browsers: a keyboard-played solo round, a timed question, the daily challenge, a two-player timed game with a reload mid-game, offline play, and WCAG 2.2 AA checks in light and dark |
 
 The end-to-end suite starts its own API and dev server on separate ports, with Open Trivia DB swapped for predictable offline questions (`QUIZZR_OFFLINE_TRIVIA=1`). Locally it uses the installed Microsoft Edge. In CI it uses Playwright's Chromium.
 
@@ -107,21 +107,89 @@ The API logs one JSON line per request and per game event, and rate-limits by IP
 
 ## Project layout
 
+Two apps live side by side: `backend/` is the API server (Python), `frontend/` is the web page (React). They talk over HTTP and, for multiplayer, a WebSocket.
+
 ```
-backend/
-  apicall.py       FastAPI app: questions, CORS, request logging, static files
-  multiplayer.py   WebSocket rooms: seats, scoring, streaks, timed lockstep
-  daily.py         Daily challenge endpoints and leaderboard
-  database.py      Postgres / SQLite connection layer
-  trivia.py        Open Trivia DB client (with retry on rate limits)
-  ratelimit.py     Per-IP limits
-  logs.py          Structured JSON logs
-  tests/
-my-react-app/
-  src/             App, Solo, Daily, Multiplayer and their components
-  e2e/             Playwright end-to-end and accessibility tests
-docs/              Screenshots for this README
+backend/                     The API server (FastAPI). Run it with: uvicorn main:app
+  main.py                    Starts here: builds the app and plugs in every route below
+  trivia.py                  Fetches questions from Open Trivia DB; prepares them for play
+  multiplayer.py             Live rooms over WebSockets: seats, scoring, streaks, timed games
+  daily.py                   The daily challenge: today's questions, answers, leaderboard
+  database.py                Talks to Postgres (production) or a SQLite file (development)
+  ratelimit.py               Limits how often one visitor can call each endpoint
+  logs.py                    Writes one JSON line per request or game event
+  tests/                     pytest tests, one file per module above
+
+frontend/                    The web page (React + Vite)
+  index.html                 The page shell: title, icons, link previews
+  vite.config.js             Build setup: dev proxy to the API, the offline service worker
+  playwright.config.js       How the end-to-end tests start a throwaway API and app
+  public/                    Files served as they are: icons, the web app manifest, link preview image
+  e2e/                       End-to-end tests: real browsers playing each mode, plus accessibility checks
+  src/
+    main.jsx                 Starts here: loads the styles, draws <App>, registers the service worker
+    App.jsx                  The whole page: the sign and mode tabs, the three modes, the side boards
+
+    modes/                   One folder per tab. Each owns its state and talks to the server.
+      solo/Solo.jsx            Settings, a round of questions, results. Works offline too.
+      daily/Daily.jsx          Today's challenge: start, answer (checked by the server), results
+      daily/DailyLeaderboard.jsx   Today's finishers
+      multiplayer/Multiplayer.jsx  A live room: the WebSocket, reconnecting, lobby, game, results
+      multiplayer/JoinRoom.jsx     Your name, then create a room or type a code to join one
+      multiplayer/RoomLeaderboard.jsx  The players in a room, ranked as they score
+
+    components/              Pieces of the screen shared by the modes
+      QuestionCard.jsx         One question: readouts, answer rows, feedback, keyboard play
+      ResultsBoard.jsx         The end of a round: score, stats, missed questions, share
+      ShareResult.jsx          The shareable result slip and its Share button
+      Settings.jsx             Quiz settings: the form, the fold-away toggle, the read-only summary
+      SideBoards.jsx           Boards beside the quiz on wide screens: Answers, Lines, Your round, How to play
+      FlapText.jsx             Text on split-flap tiles that flip when it changes
+      WakeBanner.jsx           "Waking the server up" notice for slow requests
+      OfflineBanner.jsx        "You're offline" notice
+      Icon.jsx, RouteBadge.jsx, Pips.jsx   Small drawn pieces: icons, category badges, difficulty bars
+
+    hooks/                   Reusable React behaviour
+      useOnline.js             Whether the browser is online
+      usePersistentFlag.js     An on/off choice remembered in this browser
+      useBringIntoView.js      Scrolls a new round's first question into view
+      useFlipList.js           Slides leaderboard rows to their new places
+      useIndicator.js          Measures the selected tab or option so its highlight can slide to it
+
+    lib/                     Plain JavaScript, no React: the logic, easy to test on its own
+      api.js                   Where the API is, and the calls the modes make to it
+      serverStatus.js          fetch with a time limit, and tracking of slow requests
+      questions.js             Decodes and shuffles Open Trivia DB questions for solo play
+      results.js               Streaks, verdicts, share text and other scoring helpers
+      categories.js            Categories and difficulties, with their line colours and codes
+      offlinePack.js           The questions saved in this browser for playing offline
+      storage.js               Everything kept in browser storage, read and written safely
+      seat.js                  Your seat in a multiplayer room, kept for this tab
+      flapDrum.js              Which characters a flap tile passes through, and how fast
+      motion.js                Whether the visitor asked for reduced motion
+
+    styles/                  The look. index.css loads the rest in order (later files win).
+      tokens.css               Every colour, font, radius and curve (see DESIGN.md)
+      base.css                 Fonts, resets and the page column
+      motion.css               Animations shared across the app
+      layout.css               The sign, the mode tabs and where boards sit on the page
+      board.css, buttons.css, flaps.css, lines.css   The building blocks
+      settings.css, messages.css, question.css, side-boards.css, results.css   Parts of the screen
+      leaderboard.css, multiplayer.css, daily.css   Mode-specific pieces
+
+    test/setup.js            Prepares the simulated browser the unit tests run in
+
+  *.test.js(x) files sit next to the code they test.
+
+docs/                        Screenshots for this README
+DESIGN.md                    The design system: colours, type, components, rules
+PRODUCT.md                   Who the app is for and the constraints it works within
+Dockerfile                   Builds the API (and the app) into one container
+render.yaml                  Hosting setup on Render: a static site plus the API
+.github/workflows/ci.yml     Runs every test on every push
 ```
+
+**Following one answer through the code.** In the daily challenge, clicking an answer and pressing Submit calls `onAnswer` in `components/QuestionCard.jsx`. That runs `answer()` in `modes/daily/Daily.jsx`, which sends it to the server with `daily.answer()` from `lib/api.js`. On the server, `answer_daily()` in `backend/daily.py` checks it, stores it through `database.py`, and replies with whether it was right. Back in the browser, the reply updates the question card and the side boards.
 
 ## Credits
 

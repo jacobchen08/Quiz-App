@@ -9,8 +9,8 @@ node_modules/
 
 # test output
 .pytest_cache/
-my-react-app/test-results/
-my-react-app/playwright-report/
+frontend/test-results/
+frontend/playwright-report/
 
 # design review working files
 .impeccable/review/

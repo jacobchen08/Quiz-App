@@ -3,7 +3,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-import apicall
+import main
 import multiplayer
 from conftest import raw_question
 from multiplayer import Player, Room, expire_seat, speed_bonus
@@ -19,7 +19,7 @@ QUESTIONS = [
 def client(monkeypatch):
     multiplayer.rooms.clear()
     monkeypatch.setattr(multiplayer, "fetch_questions", lambda *args, **kwargs: QUESTIONS)
-    with TestClient(apicall.app) as c:
+    with TestClient(main.app) as c:
         yield c
     multiplayer.rooms.clear()
 

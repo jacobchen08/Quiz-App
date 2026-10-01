@@ -1,0 +1,90 @@
+/* Boards: the black departure-board panels every part of the app sits on, with a head
+   (title on the left, extras on the right) and a body. */
+
+/* ---------- Boards: separate modules hung on the wall ---------- */
+.board {
+  background: var(--board);
+  color: var(--ink);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius-board);
+  box-shadow: var(--shadow-board);
+  overflow: hidden;
+}
+
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  background: var(--board-head);
+  border-bottom: 1px solid var(--board-edge);
+
+  @media (max-width: 640px) {
+    padding: 12px 18px;
+  }
+}
+
+.board-title {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.board-head-cols {
+  display: flex;
+  gap: 28px;
+  font-family: var(--condensed);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.board-body {
+  padding: 24px;
+
+  @media (max-width: 640px) {
+    padding: 18px;
+  }
+}
+
+.board-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+}
+
+.board-idle .board-body,
+.board-idle.board .board-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 44px 24px;
+  text-align: center;
+
+  p {
+    margin: 0;
+    color: var(--ink-dim);
+  }
+}
+
+/* a short note on the right of a board head, like "Chosen by Ann" */
+.board-head-note {
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.board-foot {
+  margin: 0;
+  padding: 12px 24px;
+  border-top: 1px solid var(--board-edge);
+  font-size: 14px;
+  color: var(--ink-dim);
+}

@@ -1,0 +1,32 @@
+/* The daily challenge (modes/daily). */
+
+.daily-date {
+  font-family: var(--condensed);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.daily-lede {
+  max-width: 60ch;
+  margin: 0 0 18px;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.daily-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+
+  .name-field {
+    flex: 1 1 260px;
+  }
+}
+
+.daily-clock-note {
+  margin-top: 12px;
+}

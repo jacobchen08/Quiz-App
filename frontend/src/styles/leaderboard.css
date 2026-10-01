@@ -1,0 +1,134 @@
+/* Leaderboards, shared by multiplayer rooms and the daily challenge: rank tiles, names, badges. */
+
+.leaderboard {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--board-edge);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    @media (max-width: 640px) {
+      gap: 12px;
+      padding: 12px 18px;
+    }
+  }
+}
+
+.rank {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 38px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+
+  .me & {
+    background: var(--signal);
+    color: var(--signal-ink);
+  }
+
+  /* the seam across the middle of the tile */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    height: 1px;
+    background: var(--seam);
+  }
+
+  /* your own row is lit, and a lit tile is one solid plate */
+  .me &::after {
+    display: none;
+  }
+}
+
+.player-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+
+  .me & {
+    color: var(--signal);
+  }
+}
+
+/* each player's line colour, as a short route bar before their name */
+.player-line {
+  flex: none;
+  width: 5px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.badge {
+  padding: 2px 7px;
+  border: 1px solid var(--ink-faint);
+  border-radius: 2px;
+  font-family: var(--condensed);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.badge-you {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.player-progress {
+  font-family: var(--condensed);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+.leaderboard li.away .player-name {
+  color: var(--ink-faint);
+}
+
+.badge-away {
+  border-style: dashed;
+  border-color: var(--notice);
+  color: var(--ink-dim);
+}
+
+.badge-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-color: var(--ink-dim);
+  color: var(--ink);
+}
+
+.player-time {
+  min-width: 44px;
+  font-family: var(--condensed);
+  font-size: 17px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--ink);
+}

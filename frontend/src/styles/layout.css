@@ -1,0 +1,282 @@
+/* Page layout: the station sign at the top, the mode tabs, the column of boards in the middle,
+   and (on wide screens) the side boards hung either side of it. */
+
+.App {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* ---------- Wide screens: side boards on the hall wall ---------- */
+.rail {
+  display: none;
+}
+
+@media (min-width: 1240px) {
+  /* medium-wide: the quiz keeps its full width and the side boards stack in one column
+     beside it, the round board first because it changes as you play */
+  .App {
+    display: grid;
+    grid-template-columns: minmax(0, 880px) 290px;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'header header'
+      'main right'
+      'main left';
+    justify-content: center;
+    column-gap: 36px;
+    row-gap: 28px;
+  }
+}
+
+@media (min-width: 1520px) {
+  /* widest: one column of boards either side of the quiz */
+  .App {
+    grid-template-columns: minmax(250px, 300px) minmax(0, 880px) minmax(250px, 300px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'header header header'
+      'left main right';
+  }
+}
+
+@media (min-width: 1240px) {
+
+  .header {
+    grid-area: header;
+  }
+  .main-col {
+    grid-area: main;
+  }
+  .rail-left {
+    grid-area: left;
+  }
+  .rail-right {
+    grid-area: right;
+  }
+
+  .rail {
+    display: block;
+  }
+
+  .rail-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+    > * {
+      transform-origin: top center;
+      animation: board-hang 620ms var(--ease-settle) backwards;
+    }
+    > :nth-child(2) {
+      animation-delay: 90ms;
+    }
+  }
+
+  .rail-right .rail-inner > * {
+    animation-delay: 120ms;
+  }
+
+  .rail-left .rail-inner {
+    margin-top: 0;
+  }
+}
+
+/* with a rail of its own on each side, a board column stays in view while the quiz scrolls */
+@media (min-width: 1520px) {
+  .rail-inner {
+    position: sticky;
+    top: 24px;
+  }
+  .rail-right .rail-inner > :nth-child(2) {
+    animation-delay: 210ms;
+  }
+}
+
+/* ---------- The station sign: an enamel plate with the name and the mode switch ---------- */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+
+  > p {
+    max-width: 60ch;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--wall-muted);
+  }
+}
+
+.sign {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  padding: 16px 16px 16px 28px;
+  border-radius: var(--radius-board);
+  background: var(--enamel);
+  /* the painted rule inset from the plate's edge, then the plate's shadow on the wall */
+  box-shadow:
+    inset 0 0 0 5px var(--enamel),
+    inset 0 0 0 7px var(--board),
+    var(--shadow-board);
+
+  h1 {
+    margin: 0;
+    font-family: var(--condensed);
+    font-size: clamp(40px, 6vw, 60px);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--board);
+  }
+
+  .mode-tabs {
+    button {
+      border-color: color-mix(in srgb, var(--board) 30%, transparent);
+      color: var(--board);
+
+      &:hover:not([aria-selected='true']) {
+        background: color-mix(in srgb, var(--board) 8%, transparent);
+      }
+      &[aria-selected='true'] {
+        border-color: var(--board);
+        color: var(--ink);
+      }
+      &:focus-visible {
+        outline-color: var(--board);
+      }
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 14px;
+
+    h1 {
+      padding-left: 6px;
+    }
+    .mode-tabs {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+/* ---------- The mode tabs: a platform switch on the sign ---------- */
+.mode-tabs {
+  position: relative;
+  display: flex;
+  gap: 8px;
+
+  button {
+    position: relative;
+    z-index: 1;
+    height: 44px;
+    padding: 0 20px;
+    border: 2px solid var(--wall-ink);
+    border-radius: var(--radius-key);
+    background: transparent;
+    color: var(--wall-ink);
+    font-family: var(--condensed);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, color 0.25s, border-color 0.25s;
+
+    &:hover:not([aria-selected='true']) {
+      background: color-mix(in srgb, var(--wall-ink) 10%, transparent);
+    }
+    &[aria-selected='true'] {
+      border-color: var(--board);
+      color: var(--ink);
+    }
+    &:focus-visible {
+      outline: 3px solid var(--wall-ink);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 640px) {
+      flex: 1;
+    }
+  }
+}
+
+/* before the sign has been measured, the selected tab paints its own */
+.mode-tabs:not(:has(.mode-sign)) button[aria-selected='true'] {
+  background: var(--board);
+  box-shadow: inset 0 -4px 0 var(--signal);
+}
+
+/* the platform sign: one black plate with its yellow bar, sliding between modes */
+.mode-sign {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ind-w);
+  height: var(--ind-h);
+  translate: var(--ind-x) var(--ind-y);
+  border-radius: var(--radius-key);
+  background: var(--board);
+  box-shadow: inset 0 -4px 0 var(--signal), 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+  transition: translate 420ms var(--ease-settle), width 420ms var(--ease-settle);
+}
+
+.mode-panel:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  /* boards swing into place on their hooks when a mode is shown */
+  > * {
+    transform-origin: top center;
+    animation: board-hang 520ms var(--ease-settle) backwards;
+  }
+  > :nth-child(2) {
+    animation-delay: 70ms;
+  }
+  > :nth-child(3) {
+    animation-delay: 140ms;
+  }
+  > :nth-child(n + 4) {
+    animation-delay: 210ms;
+  }
+}
+
+@keyframes board-hang {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) translateY(-14px) rotateX(9deg);
+  }
+}
+
+/* three mode tabs have to fit a phone */
+@media (max-width: 640px) {
+  .mode-tabs button {
+    padding: 0 8px;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Without motion, everything still changes state; it just lands instead of travelling */
+@media (prefers-reduced-motion: reduce) {
+  .mode-sign {
+    transition: none;
+  }
+  .mode-panel > *,
+  .rail-inner > * {
+    animation: none !important;
+  }
+}

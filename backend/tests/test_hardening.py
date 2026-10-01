@@ -2,7 +2,7 @@ import json
 
 from fastapi.testclient import TestClient
 
-import apicall
+import main
 import multiplayer
 from ratelimit import RateLimiter
 from trivia import fetch_questions
@@ -17,7 +17,7 @@ def test_rate_limiter_allows_a_burst_then_refuses_until_the_window_passes():
 
 def test_creating_rooms_too_fast_is_refused():
     multiplayer.rooms.clear()
-    with TestClient(apicall.app) as client:
+    with TestClient(main.app) as client:
         codes = [client.post("/api/rooms").status_code for _ in range(12)]
     assert codes[:10] == [200] * 10
     assert codes[10:] == [429, 429]
@@ -26,7 +26,7 @@ def test_creating_rooms_too_fast_is_refused():
 
 def test_limits_follow_the_forwarded_address_behind_a_proxy():
     multiplayer.rooms.clear()
-    with TestClient(apicall.app) as client:
+    with TestClient(main.app) as client:
         for _ in range(10):
             client.post("/api/rooms", headers={"x-forwarded-for": "203.0.113.7, 10.0.0.1"})
         blocked = client.post("/api/rooms", headers={"x-forwarded-for": "203.0.113.7"})
@@ -38,7 +38,7 @@ def test_limits_follow_the_forwarded_address_behind_a_proxy():
 
 def test_oversized_socket_messages_are_ignored():
     multiplayer.rooms.clear()
-    with TestClient(apicall.app) as client:
+    with TestClient(main.app) as client:
         code = client.post("/api/rooms").json()["code"]
         with client.websocket_connect(f"/api/ws/{code}") as ws:
             # a join padded past the size cap is ignored, so we're treated as a nameless player

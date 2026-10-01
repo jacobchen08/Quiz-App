@@ -236,6 +236,8 @@ This world rejects the trivia-app default: a gradient card with coloured answer 
 - Controls read as physical keys, with a darker lip underneath that sinks 1px when pressed.
 - One settle curve for all motion; with reduced motion, things land in place instead of travelling.
 
+**In the code:** every token below is defined once in `frontend/src/styles/tokens.css`. Each part of the screen has its own stylesheet beside it in `frontend/src/styles/` (for example `flaps.css` for split-flap tiles and `question.css` for the question board), loaded in cascade order by `styles/index.css`.
+
 ## Colors
 
 A warm off-black board family with off-white ink, one rationed signal yellow, five route-line colours and a status pair, all set on a pale enamel-grey wall.

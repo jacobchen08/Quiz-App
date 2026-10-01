@@ -28,7 +28,7 @@ services:
   - type: web
     name: quizzr
     runtime: static
-    rootDir: my-react-app
+    rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:

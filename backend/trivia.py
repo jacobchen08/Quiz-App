@@ -82,7 +82,7 @@ def fetch_questions(
         amount = int(amount)
     except (TypeError, ValueError):
         amount = 10
-    #restrict number of questions from being too many, max should be 50
+    # Open Trivia DB hands out at most 50 questions at a time
     amount = max(1, min(amount, 50))
 
     # End-to-end tests run without the internet and need answers they can predict
@@ -91,7 +91,7 @@ def fetch_questions(
 
     url = f"https://opentdb.com/api.php?amount={amount}"
 
-    #there's only a certain valid list of categories (9-32)
+    # Open Trivia DB's category ids run from 9 to 32
     if str(category).isdigit() and 9 <= int(category) <= 32:
         url += f"&category={category}"
     if difficulty in VALID_DIFFICULTIES:

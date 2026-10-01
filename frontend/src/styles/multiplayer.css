@@ -1,0 +1,171 @@
+/* Multiplayer (modes/multiplayer): joining or creating a room, the room bar, and the winner. */
+
+.join-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--board-edge);
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.join-option {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .btn-primary {
+    width: 100%;
+    min-width: 0;
+    margin-top: auto;
+  }
+}
+
+.join-heading {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.join-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--condensed);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    width: 1px;
+    background: var(--board-edge);
+  }
+
+  @media (max-width: 640px) {
+    flex-direction: row;
+
+    &::before,
+    &::after {
+      width: auto;
+      height: 1px;
+    }
+  }
+}
+
+/* room code entry: a real input laid over five flap tiles */
+.code-slot {
+  position: relative;
+  align-self: flex-start;
+  margin-bottom: 6px;
+
+  .code-tiles {
+    display: inline-flex;
+    gap: 6px;
+    font-size: 34px;
+  }
+
+  .flap {
+    width: 1.3em;
+    height: 1.45em;
+  }
+
+  input.code-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    font-size: 16px;
+    cursor: text;
+    z-index: 1;
+
+    &:focus-visible {
+      outline: none;
+    }
+    &::selection {
+      background: transparent;
+    }
+  }
+
+  /* the tile you type into next is "now" */
+  &:focus-within .flap.is-next {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
+
+.code-caption {
+  margin: -2px 0 4px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.room-bar .board-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.room-id {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.room-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lobby-note {
+  margin-bottom: 22px;
+}
+
+.winner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 24px;
+  font-family: var(--condensed);
+  font-size: clamp(24px, 3.4vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+
+  .icon {
+    flex: none;
+    color: var(--ink);
+  }
+}
+
+.winner {
+  animation: settle-up 420ms var(--ease-settle) 220ms backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winner {
+    animation-name: fade-only;
+    animation-delay: 0ms;
+  }
+}

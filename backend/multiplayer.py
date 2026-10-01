@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 
 import logs
 from ratelimit import RateLimiter, limited
-
 from trivia import TriviaError, fetch_questions, prepare_question, public_question
 
 # Multiplayer flow:
@@ -63,6 +62,8 @@ rooms = {}
 _seat_timers = set()  # keeps pending seat-expiry tasks alive until they run
 
 
+# ---------- Scoring ----------
+
 def speed_bonus(elapsed):
     """Bonus points for a correct answer given `elapsed` seconds after the previous one."""
     if elapsed <= BONUS_FULL_SECONDS:
@@ -72,6 +73,42 @@ def speed_bonus(elapsed):
     remaining = (BONUS_ZERO_SECONDS - elapsed) / (BONUS_ZERO_SECONDS - BONUS_FULL_SECONDS)
     return round(SPEED_BONUS * remaining)
 
+
+# ---------- Settings the host chooses ----------
+
+DEFAULT_SETTINGS = {"amount": 10, "category": "", "difficulty": "", "type": "", "timer": ""}
+
+
+def timer_setting(settings):
+    try:
+        seconds = int(settings.get("timer") or 0)
+    except (TypeError, ValueError):
+        return 0
+    return seconds if seconds in TIMER_CHOICES else 0
+
+
+def clean_settings(settings):
+    """The host's quiz settings, kept to values the game understands, to share with the room."""
+    if not isinstance(settings, dict):
+        return dict(DEFAULT_SETTINGS)
+    try:
+        amount = max(1, min(int(settings.get("amount")), 50))
+    except (TypeError, ValueError):
+        amount = DEFAULT_SETTINGS["amount"]
+    category = str(settings.get("category") or "")
+    difficulty = settings.get("difficulty") or ""
+    qtype = settings.get("type") or ""
+    timer = timer_setting(settings)
+    return {
+        "amount": amount,
+        "category": category if category.isdigit() and 9 <= int(category) <= 32 else "",
+        "difficulty": difficulty if difficulty in ("easy", "medium", "hard") else "",
+        "type": qtype if qtype in ("multiple", "boolean") else "",
+        "timer": str(timer) if timer else "",
+    }
+
+
+# ---------- Players and rooms ----------
 
 class Player:
     def __init__(self, name, ws):
@@ -217,6 +254,8 @@ class Room:
                 pass  # that player's disconnect is handled by their own socket loop
 
 
+# ---------- Opening rooms, holding seats and giving them up ----------
+
 def new_room_code():
     while True:
         code = "".join(secrets.choice(ROOM_CODE_CHARS) for _ in range(ROOM_CODE_LENGTH))
@@ -251,6 +290,24 @@ def expire_seat(room, player, now=None):
     return True
 
 
+async def expire_seat_later(room, player):
+    await asyncio.sleep(RECONNECT_GRACE)
+    if expire_seat(room, player) and room.code in rooms:
+        await settle(room)
+
+
+async def hold_seat(room, player):
+    """The player's socket closed without "leave": keep their seat for a while."""
+    player.connected = False
+    player.left_at = time.time()
+    player.ws = None
+    room.pass_host_if_needed()
+    await settle(room)
+    task = asyncio.create_task(expire_seat_later(room, player))
+    _seat_timers.add(task)
+    task.add_done_callback(_seat_timers.discard)
+
+
 async def settle(room):
     """Move the game on if everyone here is done, then tell everyone the new state."""
     if room.status == "playing":
@@ -266,7 +323,7 @@ async def settle(room):
     await room.broadcast(room.state_message())
 
 
-# ---------- the clock for timed games ----------
+# ---------- The clock for timed games ----------
 
 def stop_clock(room):
     task = room.clock_task
@@ -330,72 +387,7 @@ async def advance_after(room, index):
         await room.broadcast(room.state_message())
 
 
-def timer_setting(settings):
-    try:
-        seconds = int(settings.get("timer") or 0)
-    except (TypeError, ValueError):
-        return 0
-    return seconds if seconds in TIMER_CHOICES else 0
-
-
-DEFAULT_SETTINGS = {"amount": 10, "category": "", "difficulty": "", "type": "", "timer": ""}
-
-
-def clean_settings(settings):
-    """The host's quiz settings, kept to values the game understands, to share with the room."""
-    if not isinstance(settings, dict):
-        return dict(DEFAULT_SETTINGS)
-    try:
-        amount = max(1, min(int(settings.get("amount")), 50))
-    except (TypeError, ValueError):
-        amount = DEFAULT_SETTINGS["amount"]
-    category = str(settings.get("category") or "")
-    difficulty = settings.get("difficulty") or ""
-    qtype = settings.get("type") or ""
-    timer = timer_setting(settings)
-    return {
-        "amount": amount,
-        "category": category if category.isdigit() and 9 <= int(category) <= 32 else "",
-        "difficulty": difficulty if difficulty in ("easy", "medium", "hard") else "",
-        "type": qtype if qtype in ("multiple", "boolean") else "",
-        "timer": str(timer) if timer else "",
-    }
-
-
-async def expire_seat_later(room, player):
-    await asyncio.sleep(RECONNECT_GRACE)
-    if expire_seat(room, player) and room.code in rooms:
-        await settle(room)
-
-
-async def hold_seat(room, player):
-    """The player's socket closed without "leave": keep their seat for a while."""
-    player.connected = False
-    player.left_at = time.time()
-    player.ws = None
-    room.pass_host_if_needed()
-    await settle(room)
-    task = asyncio.create_task(expire_seat_later(room, player))
-    _seat_timers.add(task)
-    task.add_done_callback(_seat_timers.discard)
-
-
-@router.post("/rooms", dependencies=[Depends(limited(room_limit, "You're creating rooms too quickly. Wait a minute and try again."))])
-def create_room():
-    prune_empty_rooms()
-    room = Room(new_room_code())
-    rooms[room.code] = room
-    logs.log_event("room_created", code=room.code, open_rooms=len(rooms))
-    return {"code": room.code}
-
-
-@router.get("/rooms/{code}")
-def get_room(code: str):
-    room = rooms.get(code.upper())
-    if room is None:
-        raise HTTPException(status_code=404, detail="Room not found")
-    return {"code": room.code, "status": room.status, "playerCount": len(room.players)}
-
+# ---------- Playing a game ----------
 
 async def start_game(room, settings):
     room.status = "loading"
@@ -477,6 +469,27 @@ async def handle_message(room, player, message):
     elif kind == "answer":
         await submit_answer(room, player, message.get("index"), message.get("answer"))
 
+
+# ---------- HTTP routes ----------
+
+@router.post("/rooms", dependencies=[Depends(limited(room_limit, "You're creating rooms too quickly. Wait a minute and try again."))])
+def create_room():
+    prune_empty_rooms()
+    room = Room(new_room_code())
+    rooms[room.code] = room
+    logs.log_event("room_created", code=room.code, open_rooms=len(rooms))
+    return {"code": room.code}
+
+
+@router.get("/rooms/{code}")
+def get_room(code: str):
+    room = rooms.get(code.upper())
+    if room is None:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return {"code": room.code, "status": room.status, "playerCount": len(room.players)}
+
+
+# ---------- The WebSocket each player keeps open ----------
 
 async def receive_message(ws):
     text = await ws.receive_text()

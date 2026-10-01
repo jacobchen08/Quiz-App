@@ -3,9 +3,9 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-import apicall
 import daily
 import database
+import main
 from conftest import raw_question
 
 # Ten true/false questions: even-numbered ones are "True", odd ones "False"
@@ -33,7 +33,7 @@ def client(tmp_path, monkeypatch):
         # One Postgres database serves every test (CI sets TEST_DATABASE_URL), so start each one empty
         with database.connect(daily.SCHEMA) as conn:
             conn.execute("TRUNCATE daily_sets, daily_players, daily_answers")
-    with TestClient(apicall.app) as c:
+    with TestClient(main.app) as c:
         c.fetches = fetches
         yield c
 
