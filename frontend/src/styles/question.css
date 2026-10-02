@@ -1,0 +1,556 @@
+/* The question board (components/QuestionCard.jsx): the readouts across the top, the row of
+   question cells, the question and its answers, feedback, and moving between questions. */
+
+.quiz-head {
+  align-items: flex-end;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.readout-end {
+  align-items: flex-end;
+}
+
+.readout-label {
+  font-family: var(--condensed);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.readout-value {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.readout-of {
+  font-family: var(--condensed);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+/* one cell per question; the lit cell is "now" */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+  gap: 4px;
+  margin: 0 0 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--key-edge);
+  border-radius: 3px;
+  background: var(--tile-bottom);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.25s var(--ease-settle), color 0.25s;
+
+  &:hover {
+    border-color: var(--ink-dim);
+  }
+  &.correct {
+    color: var(--ok);
+  }
+  &.wrong {
+    color: var(--bad);
+  }
+  &.pending {
+    background: var(--tile-top);
+  }
+  &[aria-current='step'] {
+    border-color: var(--signal);
+    background: var(--signal);
+    color: var(--signal-ink);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+/* category on the left, difficulty on the right, wrapping under each other when narrow */
+.question-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 12px;
+}
+
+.category-tag,
+.difficulty-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.question {
+  max-width: 34em;
+  margin: 0 0 26px;
+  font-size: clamp(22px, 3.6vw, 30px);
+  font-weight: 650;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  text-wrap: pretty;
+  color: var(--ink);
+}
+
+/* a new question arrives from the side the player moved towards,
+   then its answer rows come in one after another like departure lines */
+.question-stage {
+  .question-meta,
+  .question {
+    animation: stage-in-right 460ms var(--ease-settle) backwards;
+  }
+  .question {
+    animation-delay: 40ms;
+  }
+  &.from-left .question-meta,
+  &.from-left .question {
+    animation-name: stage-in-left;
+  }
+  .answer {
+    animation: row-in 420ms var(--ease-settle) backwards;
+    animation-delay: calc(110ms + var(--i, 0) * 60ms);
+  }
+}
+
+@keyframes stage-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes stage-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+/* answers as departure rows: letter tile, answer, status column */
+.answers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.answer {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 6px 18px 6px 6px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--row);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--ink-dim);
+    background: var(--row-hover);
+
+    .answer-letter {
+      background: var(--ink);
+      color: var(--board);
+    }
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    cursor: default;
+  }
+  &.dimmed {
+    color: var(--ink-faint);
+  }
+  &.correct {
+    border-color: var(--ok);
+    .answer-letter {
+      background: var(--ok);
+      color: var(--board);
+    }
+  }
+  &.wrong {
+    border-color: var(--bad);
+    .answer-letter {
+      background: var(--bad);
+      color: var(--board);
+    }
+  }
+  &.pending {
+    border-color: var(--ink-dim);
+  }
+  /* chosen but not submitted yet: this is "now", so it takes the signal */
+  &.selected,
+  &.selected:hover:not(:disabled) {
+    border-color: var(--signal);
+    background: var(--row-hover);
+
+    .answer-letter {
+      background: var(--signal);
+      color: var(--signal-ink);
+      animation: tile-turn 340ms var(--ease-settle);
+
+      &::after {
+        display: none;
+      }
+    }
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 44px minmax(0, 1fr);
+    padding-right: 14px;
+
+    .answer-status {
+      grid-column: 2;
+      margin-top: -6px;
+      padding-bottom: 6px;
+    }
+  }
+}
+
+.answer-letter {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  font-family: var(--condensed);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: background 0.12s, color 0.12s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    height: 1px;
+    background: var(--seam);
+  }
+
+  /* a lit status tile is one solid plate; the seam would read as a strikethrough */
+  .correct &::after,
+  .wrong &::after {
+    display: none;
+  }
+
+  /* the tile flips over to its result, like a flap turning */
+  .correct &,
+  .wrong & {
+    animation: tile-turn 440ms var(--ease-settle);
+  }
+}
+
+@keyframes tile-turn {
+  from {
+    transform: perspective(160px) rotateX(-100deg);
+    filter: brightness(0.6);
+  }
+}
+
+.answer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--condensed);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: status-in 320ms var(--ease-settle) 120ms backwards;
+
+  .correct & {
+    color: var(--ok);
+  }
+  .wrong & {
+    color: var(--bad);
+  }
+  .pending & {
+    color: var(--ink-dim);
+  }
+}
+
+@keyframes status-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+
+  .btn-primary {
+    min-width: 200px;
+  }
+}
+
+.submit-hint {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+
+  .icon {
+    flex: none;
+    margin-top: 2px;
+  }
+  &.correct {
+    color: var(--ok);
+  }
+  &.wrong {
+    color: var(--bad);
+  }
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--board-edge);
+}
+
+/* the level is a fact here, not a choice, so its pips are always fully lit */
+.difficulty-tag .pips .on {
+  background: var(--accent);
+}
+
+.readout-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.readout-streak {
+  @media (max-width: 560px) {
+    display: none;
+  }
+
+  /* a streak going: the label brightens from dim to full ink (yellow is kept for "now") */
+  &.is-hot .readout-label {
+    color: var(--ink);
+  }
+}
+
+.feedback-note {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ---------- Timed questions ---------- */
+/* ran out of time: marked like a miss, and named in words for screen readers */
+.step.timeout {
+  color: var(--bad);
+}
+
+/* on the lit "now" cell the mark stays dark, like every other mark there */
+.step.timeout[aria-current='step'] {
+  color: var(--signal-ink);
+}
+
+/* the countdown: a lamp strip under the board head that drains towards zero */
+.countdown {
+  height: 6px;
+  background: var(--well);
+  border-bottom: 1px solid var(--board-edge);
+  overflow: hidden;
+}
+
+.countdown-fill {
+  display: block;
+  height: 100%;
+  background: var(--signal);
+  transform-origin: left center;
+  /* one tick of the clock, so the strip moves smoothly between updates */
+  transition: transform 200ms linear, background 300ms;
+
+  .countdown.is-urgent & {
+    background: var(--bad);
+  }
+}
+
+/* the last five seconds: the digits' label turns and the tiles pulse once a second */
+.readout-time.is-urgent {
+  .readout-label {
+    color: var(--bad);
+  }
+  .flaps {
+    animation: urgent-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes urgent-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.nav-locked {
+  margin-bottom: 0;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.step:disabled {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-fill {
+    transition: none;
+  }
+  .readout-time.is-urgent .flaps {
+    animation: none;
+  }
+}
+
+/* ---------- Locked navigation (timed rounds) ---------- */
+.nav-locked-row {
+  align-items: center;
+  flex-wrap: wrap;
+
+  .nav-locked {
+    margin: 0;
+  }
+  .btn-finish {
+    margin-left: auto;
+  }
+}
+
+/* ---------- Keyboard shortcut hint ---------- */
+.key-hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+
+  kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    border: 1px solid var(--key-edge);
+    border-radius: 3px;
+    background: var(--key);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* no keyboard to speak of on phones and tablets */
+  @media (hover: none) and (pointer: coarse) {
+    display: none;
+  }
+}
+
+/* the slash in the question readout: 01 / 10 */
+.readout-slash {
+  font-family: var(--condensed);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+/* the board takes focus when a round starts; it isn't a control, so no focus ring */
+.question-board:focus {
+  outline: none;
+}
+
+/* on wide screens the Your round board already shows the streak */
+@media (min-width: 1240px) {
+  .readout-streak {
+    display: none;
+  }
+}
+
+/* An answer's verdict rises in under the answers it describes */
+.feedback {
+  animation: settle-up 300ms var(--ease-settle) backwards;
+}
+
+.submit-hint {
+  animation: fade-only 220ms ease-out;
+}
+
+/* A selected answer row eases into its lit state rather than snapping */
+.answer.selected {
+  transition-duration: 0.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .question-stage *,
+  .answer-letter,
+  .answer-status {
+    animation: none !important;
+  }
+  .feedback {
+    animation-name: fade-only;
+    animation-delay: 0ms;
+  }
+}

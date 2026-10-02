@@ -1,0 +1,166 @@
+/* Messages: errors, notes, banners, and the notices for a waking server and for being offline.
+   Notices have a dashed outline in board ink, so they never borrow a line colour or the signal. */
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--bad);
+  border-radius: var(--radius-key);
+  background: var(--board);
+  color: var(--ink);
+  font-weight: 500;
+
+  .icon {
+    flex: none;
+    margin-top: 2px;
+    color: var(--bad);
+  }
+
+  .mode-panel > & {
+    margin: 0;
+  }
+}
+
+.muted-text {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 15px;
+}
+
+.waiting {
+  margin: 0;
+  padding: 8px 0;
+  text-align: center;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.banner {
+  margin: 0;
+  padding: 14px 20px;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius-board);
+  background: var(--board);
+  color: var(--ink);
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--shadow-board);
+}
+
+.banner-warn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed var(--notice);
+
+  .icon {
+    flex: none;
+    color: var(--ink);
+  }
+}
+
+.banner-inline {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  color: var(--ink);
+}
+
+.wake {
+  border-style: dashed;
+  border-color: var(--notice);
+
+  .board-body {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  @media (max-width: 520px) {
+    .board-body {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  }
+}
+
+.wake-title {
+  margin: 0 0 4px;
+  font-family: var(--condensed);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.wake-text {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+.notice {
+  border-style: dashed;
+  border-color: var(--notice);
+  animation: settle-down 340ms var(--ease-settle) backwards;
+
+  .board-body {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .icon {
+    flex: none;
+    color: var(--ink);
+  }
+}
+
+.notice-title {
+  margin: 0 0 4px;
+  font-family: var(--condensed);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.notice-text {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-dim);
+}
+
+/* Errors and notices drop in from the board above them */
+.error,
+.banner,
+.banner-inline,
+.wake {
+  animation: settle-down 340ms var(--ease-settle) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* the same moment as a plain fade: state still changes visibly, nothing travels */
+  .error,
+  .banner,
+  .banner-inline,
+  .wake,
+  .notice {
+    animation-name: fade-only;
+  }
+  .error,
+  .banner,
+  .banner-inline,
+  .wake {
+    animation-delay: 0ms;
+  }
+}

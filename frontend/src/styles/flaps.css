@@ -1,0 +1,164 @@
+/* Split-flap tiles (components/FlapText.jsx): letters and numbers on flipping tiles. */
+
+.flaps {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.flaps-row {
+  display: inline-flex;
+  gap: 0.08em;
+}
+
+.flap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 0.8em;
+  height: 1.2em;
+  border-radius: 0.09em;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.4);
+  font-family: var(--condensed);
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+
+  /* the seam between the two halves */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc(50% - 0.5px) 0 auto;
+    z-index: 2;
+    height: 1px;
+    background: var(--seam);
+  }
+}
+
+.flap-char {
+  position: relative;
+  top: 0.02em;
+}
+
+/* ---- One flip, in two halves ----
+   Each tile is two half-cards. The top half of the old character falls forward, uncovering
+   the new top; the lower flap then lands, bringing the new bottom half down over the old.
+   --flip is one whole flip; each leaf takes half of it. */
+.flap {
+  --flip: 110ms;
+  perspective: 2.4em;
+}
+
+.flap-half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+
+.flap-top {
+  top: 0;
+  background: var(--tile-top);
+  border-radius: 0.09em 0.09em 0 0;
+}
+
+.flap-bottom {
+  bottom: 0;
+  background: var(--tile-bottom);
+  border-radius: 0 0 0.09em 0.09em;
+}
+
+/* the glyph is drawn full height inside each half, so each half shows its own part of it */
+.flap-glyph {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 200%;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  padding-top: 0.04em;
+
+  .flap-bottom & {
+    top: -100%;
+  }
+}
+
+.flap-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* above the halves, below the seam */
+}
+
+/* the old top half folds down: turning away from the light, it darkens as it goes */
+.flap-leaf-top {
+  transform-origin: 50% 100%;
+  animation: flap-leaf-fall calc(var(--flip) / 2) cubic-bezier(0.55, 0.05, 0.9, 0.5) both;
+}
+
+/* the flap lands with the new bottom half: coming out of shadow, with a small settle */
+.flap-leaf-bottom {
+  transform-origin: 50% 0%;
+  animation: flap-leaf-land calc(var(--flip) / 2) cubic-bezier(0.2, 0.9, 0.35, 1.25) calc(var(--flip) / 2) both;
+}
+
+/* the falling flap throws a shadow over the bottom half it's about to cover */
+.flap-shade {
+  position: absolute;
+  inset: 50% 0 0;
+  background: #000;
+  pointer-events: none;
+  animation: flap-shade var(--flip) ease-out both;
+}
+
+@keyframes flap-leaf-fall {
+  from {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+  to {
+    transform: rotateX(-90deg);
+    filter: brightness(0.45);
+  }
+}
+
+@keyframes flap-leaf-land {
+  from {
+    transform: rotateX(90deg);
+    filter: brightness(0.5);
+  }
+  to {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes flap-shade {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.flaps-md {
+  font-size: 20px;
+}
+.flaps-lg {
+  font-size: clamp(28px, 5vw, 36px);
+}
+.flaps-xl {
+  font-size: clamp(38px, 8vw, 56px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flap-leaves {
+    display: none;
+  }
+}

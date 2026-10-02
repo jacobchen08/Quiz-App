@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+
+# dependencies
+node_modules/
+
+# daily challenge results (SQLite)
+*.db
+
+# test output
+.pytest_cache/
+frontend/test-results/
+frontend/playwright-report/
+
+# design review working files
+.impeccable/review/

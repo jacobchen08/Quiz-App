@@ -1,0 +1,425 @@
+/* Quiz settings (components/Settings.jsx): the form fields, the folding settings board,
+   and the read-only summary guests see in a room. */
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 24px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  > label,
+  > legend {
+    font-family: var(--condensed);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+}
+
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  > legend {
+    padding: 0;
+    margin-bottom: 8px;
+  }
+}
+
+select,
+input[type='number'],
+input[type='text'] {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--tile-bottom);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  caret-color: var(--signal);
+  transition: border-color 0.15s;
+
+  &::placeholder {
+    color: var(--ink-faint);
+  }
+  &:hover {
+    border-color: var(--ink-faint);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
+
+.name-field {
+  max-width: 380px;
+}
+
+/* number of questions: a flap counter between two keys */
+.counter {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  gap: 6px;
+
+  input[type='number'] {
+    text-align: center;
+    font-family: var(--condensed);
+    font-size: 24px;
+    font-weight: 700;
+    appearance: textfield;
+    -moz-appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+}
+
+.counter-key {
+  display: grid;
+  place-items: center;
+  height: 48px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: var(--key);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+
+  &:hover {
+    background: var(--key-hover);
+  }
+  &:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
+
+/* category: a board display with a drawn chevron */
+.select-wrap {
+  position: relative;
+
+  .route {
+    position: absolute;
+    top: 12px;
+    left: 10px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  select {
+    appearance: none;
+    padding-left: 60px;
+    padding-right: 44px;
+    cursor: pointer;
+    text-overflow: ellipsis;
+  }
+
+  .select-chevron {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    translate: 0 -50%;
+    color: var(--ink-dim);
+    pointer-events: none;
+  }
+}
+
+/* Customizable select (Chromium): the open list becomes part of the board */
+@supports (appearance: base-select) {
+  .select-wrap select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  .select-wrap select {
+    display: flex;
+    align-items: center;
+
+    &::picker-icon {
+      display: none;
+    }
+    &:open {
+      border-color: var(--ink-dim);
+    }
+  }
+
+  ::picker(select) {
+    margin-top: 6px;
+    padding: 6px;
+    max-height: 340px;
+    border: 1px solid var(--board-edge);
+    border-radius: var(--radius-key);
+    background: var(--board);
+    color: var(--ink);
+    box-shadow: var(--shadow-board);
+  }
+
+  option {
+    padding: 9px 12px;
+    border-radius: 3px;
+    color: var(--ink);
+    cursor: pointer;
+
+    &::checkmark {
+      display: none;
+    }
+    &:hover,
+    &:focus-visible {
+      outline: none;
+      background: var(--key-hover);
+    }
+    &:checked {
+      background: var(--tile-top);
+      font-weight: 700;
+    }
+  }
+}
+
+/* difficulty and type: labeled switch positions */
+.switch-track {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--key-edge);
+  border-radius: 5px;
+  background: var(--well);
+}
+
+/* one raised tile that slides to the chosen position; its bar takes the option's line colour */
+.switch-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ind-w);
+  height: var(--ind-h);
+  translate: var(--ind-x) var(--ind-y);
+  border-radius: 3px;
+  background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: translate 360ms var(--ease-settle), width 360ms var(--ease-settle), height 360ms var(--ease-settle);
+
+  /* the option's line colour, as a lamp strip along the tile's foot */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto 5px 3px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent, transparent);
+    transition: background 360ms var(--ease-settle);
+  }
+}
+
+.switch-pos {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 3px;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+
+  input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  &:hover {
+    color: var(--ink);
+  }
+  &:has(input:checked) {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  /* before the thumb has been measured, the chosen position paints its own tile */
+  &.no-thumb:has(input:checked) {
+    background: linear-gradient(to bottom, var(--tile-top) 50%, var(--tile-bottom) 50%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+  }
+}
+
+/* difficulty pips: one, two or three lit bars in the option's line colour */
+.pips {
+  display: inline-flex;
+  gap: 2px;
+
+  span {
+    width: 4px;
+    height: 11px;
+    border-radius: 1px;
+    background: var(--key-edge);
+    transition: background 0.2s;
+  }
+  .on {
+    background: color-mix(in srgb, var(--accent) 45%, var(--key-edge));
+  }
+  .switch-pos:has(input:checked) & .on,
+  .switch-pos:hover & .on {
+    background: var(--accent);
+  }
+}
+
+/* ---------- Loading hint beside Generate / Start ---------- */
+.board-actions:has(.load-hint) {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+}
+
+.load-hint {
+  flex: 1 1 240px;
+  max-width: 44ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.settings-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 0 0 20px;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius-key);
+  background: var(--board-edge);
+  overflow: hidden;
+
+  div {
+    padding: 12px 16px;
+    background: var(--row);
+  }
+  dt {
+    font-family: var(--condensed);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  dd {
+    margin: 4px 0 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+}
+
+.board-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--key-edge);
+  border-radius: var(--radius-key);
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: var(--condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .icon {
+    transition: transform 320ms var(--ease-settle);
+  }
+  .icon.is-open {
+    transform: rotate(180deg);
+  }
+}
+
+/* the settings fold shut by animating their row to nothing, so nothing jumps */
+.folding {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 360ms var(--ease-settle), opacity 240ms ease-out;
+
+  &[data-open='false'] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+.folding-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* while folded, the choices read as one line above the Generate key */
+.settings-line {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  animation: fade-only 260ms ease-out backwards;
+}
+
+/* the board has less to say when folded, so its actions sit closer */
+.folding[data-open='false'] ~ .board-actions {
+  margin-top: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folding,
+  .board-toggle .icon {
+    transition: none;
+  }
+}
