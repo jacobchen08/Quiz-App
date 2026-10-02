@@ -1,6 +1,6 @@
 # Render Blueprint (render.com -> New -> Blueprint): two services from this repo.
 #
-# - quizzr: the React app as a static site on Render's CDN. It loads instantly even while
+# - Quizzr: the React app as a static site on Render's CDN. It loads instantly even while
 #   the API is asleep, so visitors see the app (and its "waking the server up" notice)
 #   straight away instead of a blank tab.
 # - quizzr-api: the FastAPI server (Docker). Each service learns the other's address

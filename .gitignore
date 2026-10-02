@@ -12,5 +12,5 @@ node_modules/
 frontend/test-results/
 frontend/playwright-report/
 
-# design review working files
+# design review working files  
 .impeccable/review/
