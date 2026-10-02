@@ -1,14 +1,22 @@
 # Render Blueprint (render.com -> New -> Blueprint): two services from this repo.
 #
-# - Quizzr: the React app as a static site on Render's CDN. It loads instantly even while
+# - quizzr: the React app as a static site on Render's CDN. It loads instantly even while
 #   the API is asleep, so visitors see the app (and its "waking the server up" notice)
 #   straight away instead of a blank tab.
-# - quizzr-api: the FastAPI server (Docker). Each service learns the other's address
-#   automatically through fromService below.
+# - quizzr-api: the FastAPI server (Docker).
 #
-# One value to fill in by hand after the first deploy: DATABASE_URL on quizzr-api, set to a
-# Postgres connection string (a free Neon or Supabase database). Without it the daily
-# challenge falls back to SQLite, which Render's free plan wipes on every restart.
+# Three values are entered in the Render dashboard (none of them is ever committed):
+#
+#   DATABASE_URL     on quizzr-api   a Postgres connection string (a free Neon or Supabase
+#                                    database). Without it the daily challenge falls back to
+#                                    SQLite, which Render's free plan wipes on every restart.
+#   ALLOWED_ORIGINS  on quizzr-api   the app's public address, e.g. quizzr.onrender.com
+#   VITE_API_HOST    on quizzr       the API's public address, e.g. quizzr-api.onrender.com
+#
+# The two addresses can't be filled in automatically: Render's fromService only offers a
+# service's private-network hostname, which a visitor's browser can't reach. Both addresses
+# are known as soon as the services are created; after setting VITE_API_HOST, redeploy the
+# static site, because the address is built into the app.
 services:
   - type: web
     name: quizzr-api
@@ -18,12 +26,9 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false # entered in the dashboard; never committed
+        sync: false
       - key: ALLOWED_ORIGINS
-        fromService:
-          type: web
-          name: quizzr
-          property: host
+        sync: false
 
   - type: web
     name: quizzr
@@ -33,10 +38,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_HOST
-        fromService:
-          type: web
-          name: quizzr-api
-          property: host
+        sync: false
     headers:
       # Built files have content hashes in their names, so they can be cached for good
       - path: /assets/*

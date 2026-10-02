@@ -102,7 +102,13 @@ GitHub Actions runs everything on each push, and runs the daily challenge tests 
 
 [`render.yaml`](render.yaml) sets up two services on [Render](https://render.com): the app as a static site and the API as a Docker container. Keeping them separate means the page loads straight away even when the free API server is asleep, and the app shows a message while it wakes up.
 
-The only setting to fill in by hand is `DATABASE_URL` on the API, which should point at a Postgres database (a free [Neon](https://neon.tech) one works). Without it the daily leaderboard falls back to SQLite and is wiped every time Render restarts the server.
+Render asks for three settings when you create the services:
+
+- `DATABASE_URL` on the API: a Postgres connection string (a free [Neon](https://neon.tech) database works). Without it the daily leaderboard falls back to SQLite and is wiped every time Render restarts the server.
+- `ALLOWED_ORIGINS` on the API: the app's address, like `quizzr.onrender.com`.
+- `VITE_API_HOST` on the app: the API's address, like `quizzr-api.onrender.com`.
+
+Render shows both addresses as soon as the services exist, and they can't be filled in automatically because Render only shares a service's private address between services, which browsers can't reach. The API address is built into the app, so after setting `VITE_API_HOST`, redeploy the static site.
 
 The [`Dockerfile`](Dockerfile) can also run everything as a single service, with the API serving the built app.
 
