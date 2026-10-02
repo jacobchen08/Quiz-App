@@ -6,6 +6,8 @@ A trivia game styled like a train station departure board. You can play on your 
 
 The frontend is React and Vite. The backend is FastAPI, with WebSockets for the multiplayer rooms.
 
+Built with assistance from Claude Code
+
 <p align="center">
   <img src="docs/question.png" alt="A solo round on desktop: the quiz settings, a question answered wrong with the correct answer shown, and side boards with the round's progress" width="720">
 </p>
