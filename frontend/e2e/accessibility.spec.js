@@ -7,8 +7,14 @@ import { answer, visiblePanel } from './helpers';
 // reader announcements are covered by the other tests.
 
 async function expectNoViolations(page, screen) {
-  // Let entrance animations settle so contrast is measured on the final colours
-  await page.waitForTimeout(800);
+  // Measure contrast on the final colours: wait until every entrance animation has finished.
+  // (A fixed pause isn't enough: the results arrive over about a second, and slower machines,
+  // like WebKit in CI, take longer.)
+  await page.waitForFunction(
+    () => document.getAnimations().every((animation) => animation.playState !== 'running'),
+    null,
+    { timeout: 10_000 }
+  );
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
