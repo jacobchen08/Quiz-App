@@ -9,7 +9,9 @@ import usePersistentFlag from '../../hooks/usePersistentFlag';
 import { apiUrl, roomSocketUrl } from '../../lib/api';
 import { ordinal, shareText } from '../../lib/results';
 import { clearSeat, loadSeat, saveSeat } from '../../lib/seat';
+import { copyText } from '../../lib/clipboard';
 import { apiFetch, track } from '../../lib/serverStatus';
+import { clampAmount } from '../../lib/settings';
 import { KEYS } from '../../lib/storage';
 import JoinRoom from './JoinRoom';
 import RoomLeaderboard, { POINT_DIGITS } from './RoomLeaderboard';
@@ -40,7 +42,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
   const [revealed, setRevealed] = useState({}); // timed games: question index -> answer, once it has closed
   const [clockOffset, setClockOffset] = useState(0); // server clock minus ours, in milliseconds
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null); // null, or whether the last copy worked
   const online = useOnline();
   const [settingsOpen, setSettingsOpen] = usePersistentFlag(KEYS.roomSettingsOpen, true);
 
@@ -320,7 +322,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
 
   function startGame() {
     setError('');
-    send({ type: 'start', settings });
+    send({ type: 'start', settings: { ...settings, amount: clampAmount(settings.amount) } });
   }
 
   function answer(option) {
@@ -330,12 +332,10 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
     send({ type: 'answer', index: shownIndex, answer: option });
   }
 
-  function copyInvite() {
-    const link = `${window.location.origin}/?room=${room.code}`;
-    navigator.clipboard?.writeText(link).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+  async function copyInvite() {
+    const ok = await copyText(`${window.location.origin}/?room=${room.code}`);
+    setCopied(ok);
+    setTimeout(() => setCopied(null), ok ? 1500 : 3000);
   }
 
   // ---------- Join / create screen ----------
@@ -399,7 +399,7 @@ function Multiplayer({ settings, onSettingsChange, onProgress }) {
           <div className="room-actions">
             <button className="btn" onClick={copyInvite}>
               <Icon name="link" />
-              {copied ? 'Copied!' : 'Copy invite link'}
+              {copied === null ? 'Copy invite link' : copied ? 'Copied!' : "Couldn't copy: share the code"}
             </button>
             <button className="btn btn-ghost" onClick={leaveRoom}>
               <Icon name="exit" />

@@ -1,4 +1,5 @@
 import { apiFetch } from './serverStatus';
+import { clampAmount } from './settings';
 
 // Where the API lives.
 // - Development, and the single-service deploy: the same origin as the page. In development
@@ -14,7 +15,7 @@ export function apiUrl(path) {
 
 export function questionsUrl(settings) {
   const params = new URLSearchParams({
-    amount: settings.amount,
+    amount: clampAmount(settings.amount),
     category: settings.category || 'all',
     difficulty: settings.difficulty || 'all',
     type: settings.type || 'all',
@@ -41,8 +42,10 @@ export const daily = {
   // the token goes in a header, never the URL, so it stays out of logs and history
   load: (token) => dailyRequest('', { headers: { 'X-Quizzr-Token': token } }),
   start: (token, name) => dailyRequest('/start', post({ token, name })),
-  answer: (token, index, answer) => dailyRequest('/answer', post({ token, index, answer })),
-  leaderboard: (token) => dailyRequest('/leaderboard', { headers: { 'X-Quizzr-Token': token } }),
+  // `date` is the day the run started, so a run that crosses midnight (UTC) still counts
+  answer: (token, index, answer, date) => dailyRequest('/answer', post({ token, index, answer, date })),
+  leaderboard: (token, date) =>
+    dailyRequest(date ? `/leaderboard?date=${date}` : '/leaderboard', { headers: { 'X-Quizzr-Token': token } }),
 };
 
 export function roomSocketUrl(code) {

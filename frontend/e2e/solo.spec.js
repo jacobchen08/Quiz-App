@@ -47,3 +47,23 @@ test('a timed solo question runs out and shows the answer', async ({ page }) => 
   await expect(panel.locator('.feedback')).toHaveText("Time's up. The answer is Right 1.", { timeout: 15_000 });
   await expect(panel.getByRole('button', { name: 'Question 1, ran out of time' })).toBeVisible();
 });
+
+test('on a phone, the settings fold away while a round is on, so the question is in view', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto('/');
+  const panel = visiblePanel(page);
+
+  await panel.getByLabel('Number of questions (1–50)').fill('2');
+  await panel.getByRole('button', { name: 'Generate Questions' }).click();
+  await expect(panel.getByText('Test question 1')).toBeInViewport();
+  await expect(panel.getByRole('button', { name: 'Show settings' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel.locator('.settings-line')).toContainText('2 questions'); // still says what they are
+
+  // They come back when asked for, and folding them doesn't change the remembered choice
+  await panel.getByRole('button', { name: 'Show settings' }).click();
+  await expect(panel.getByLabel('Number of questions (1–50)')).toBeVisible();
+  await page.reload();
+  await expect(visiblePanel(page).getByRole('button', { name: 'Hide settings' })).toBeVisible();
+  await context.close();
+});

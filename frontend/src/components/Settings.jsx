@@ -3,6 +3,7 @@ import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import useIndicator from '../hooks/useIndicator';
 import { categories, categoryById, difficulties } from '../lib/categories';
+import { clampAmount, MAX_QUESTIONS, MIN_QUESTIONS } from '../lib/settings';
 import Pips from './Pips';
 
 const difficultyOptions = [{ value: '', label: 'Any' }, ...difficulties];
@@ -63,8 +64,7 @@ function Settings({ settings, onChange, idPrefix = '' }) {
   }
 
   function step(delta) {
-    const current = Number(settings.amount) || 0;
-    update('amount', Math.min(50, Math.max(1, current + delta)));
+    update('amount', clampAmount(clampAmount(settings.amount) + delta));
   }
 
   return (
@@ -79,9 +79,10 @@ function Settings({ settings, onChange, idPrefix = '' }) {
             id={`${idPrefix}num-questions`}
             type="number"
             value={settings.amount}
-            min="1"
-            max="50"
+            min={MIN_QUESTIONS}
+            max={MAX_QUESTIONS}
             onChange={(e) => update('amount', e.target.value)}
+            onBlur={() => update('amount', clampAmount(settings.amount))}
           />
           <button type="button" className="counter-key" onClick={() => step(1)} aria-label="One more question">
             <Icon name="plus" />

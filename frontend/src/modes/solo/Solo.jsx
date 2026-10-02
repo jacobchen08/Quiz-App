@@ -14,6 +14,9 @@ import { missedQuestions, shareText, streakNote, streaks } from '../../lib/resul
 import { apiFetch } from '../../lib/serverStatus';
 import { KEYS } from '../../lib/storage';
 
+// Screens too narrow for the side boards (see styles/layout.css), such as phones
+const NARROW_SCREEN = '(max-width: 1239px)';
+
 // Solo: pick settings, generate a round of questions, answer them, see your results.
 // Everything happens in this browser: the questions come from the API (or, offline, from the
 // pack saved in this browser), and answers are checked here, since you only play yourself.
@@ -27,6 +30,10 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   const [error, setError] = useState('');
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = usePersistentFlag(KEYS.soloSettingsOpen, true);
+  // On a narrow screen the settings fold away while a round is on, so the question isn't pushed
+  // down out of sight. This doesn't change the choice remembered in settingsOpen.
+  const [foldedForRound, setFoldedForRound] = useState(false);
+  const showSettings = settingsOpen && !foldedForRound;
   const stageRef = useRef(null);
   const [round, setRound] = useState(0); // counts generated rounds, to bring each new one into view
   const [playingOffline, setPlayingOffline] = useState(false); // this round came from the saved pack
@@ -114,6 +121,12 @@ function Solo({ settings, onSettingsChange, onProgress }) {
     setShowResults(false);
     setPlayingOffline(fromPack);
     setRound((r) => r + 1);
+    if (window.matchMedia?.(NARROW_SCREEN).matches) setFoldedForRound(true);
+  }
+
+  function toggleSettings() {
+    setFoldedForRound(false);
+    setSettingsOpen(!showSettings);
   }
 
   // Offline: deal from the questions saved in this browser instead
@@ -152,6 +165,7 @@ function Solo({ settings, onSettingsChange, onProgress }) {
   useBringIntoView(stageRef, round);
 
   function changeSettings() {
+    setFoldedForRound(false);
     setSettingsOpen(true);
     settingsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     settingsRef.current?.querySelector('input, select, button')?.focus({ preventScroll: true });
@@ -165,10 +179,10 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       <section className="board" aria-labelledby="solo-settings-title" ref={settingsRef}>
         <div className="board-head">
           <h2 className="board-title" id="solo-settings-title">Quiz settings</h2>
-          <SettingsToggle open={settingsOpen} onToggle={() => setSettingsOpen((o) => !o)} controls="solo-settings" />
+          <SettingsToggle open={showSettings} onToggle={toggleSettings} controls="solo-settings" />
         </div>
         <div className="board-body">
-          <FoldingSettings id="solo-settings" open={settingsOpen} settings={settings} onChange={onSettingsChange} />
+          <FoldingSettings id="solo-settings" open={showSettings} settings={settings} onChange={onSettingsChange} />
           <div className="board-actions">
             <p className="load-hint">
               {online
@@ -187,8 +201,8 @@ function Solo({ settings, onSettingsChange, onProgress }) {
       {total === 0 && (
         <section className="board board-idle">
           <div className="board-body">
-            <FlapText text="" length={10} label="" size="lg" />
-            <p>Click "Generate Questions" to begin.</p>
+            <FlapText text="READY" label="" size="lg" />
+            <p>Pick your settings, then generate a set of questions.</p>
           </div>
         </section>
       )}

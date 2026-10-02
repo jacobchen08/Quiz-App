@@ -12,8 +12,7 @@ Primarily a portfolio and learning project. The main audience is recruiters, rev
 ## Product Purpose
 A trivia quiz in the browser. Players choose how many questions (1–50), a category, a difficulty, and a question type, then play either solo or in a live multiplayer room. Success means a first-time visitor starts playing within seconds, finishes a round without confusion, and comes away seeing a polished, well-engineered product.
 
-## Positioning
-Zero friction: no accounts and no install. In solo mode you pick settings and play. In multiplayer, one person creates a room and shares a 5-letter code or an invite link (`/?room=CODE`), and everyone is playing right away. Positioning beyond that is still undecided.
+In solo mode you pick settings and play. In multiplayer, one person creates a room and shares a 5-letter code or an invite link (`/?room=CODE`), and everyone is playing right away. Positioning beyond that is still undecided.
 
 ## Operating Context
 - Three modes as tabs: Solo, Daily and Multiplayer. All stay mounted, so switching tabs doesn't lose progress.
@@ -34,17 +33,3 @@ Zero friction: no accounts and no install. In solo mode you pick settings and pl
 - Tests: pytest (`backend/tests`) and Vitest (`frontend/src/**/*.test.*`), run by GitHub Actions (`.github/workflows/ci.yml`).
 - Name: "Quizzr" is now shown in the app header, but it's still unconfirmed as a brand. Positioning beyond zero friction is undecided.
 
-## Brand Commitments
-None yet. "Quiz App" is a placeholder name, so don't treat it as a brand or build identity around it.
-
-## Evidence on Hand
-No users, testimonials, usage data, or press. Future work must not invent player counts, reviews, or ratings. The only real content is the live Open Trivia DB questions and the app itself.
-
-## Product Principles
-1. **Playing within seconds.** Every added step before the first question needs a reason.
-2. **Craft is the pitch.** The audience is judging the work, so edge cases, empty states, errors, and disconnects count as much as the happy path.
-3. **Honest about what it is.** It's a free, account-free trivia app. Don't add claims, social proof, or features it doesn't have.
-4. **Solo and multiplayer are one product.** Both modes share settings and the question card, so they should behave and read as one system.
-
-## Accessibility & Inclusion
-Target WCAG 2.2 AA. The whole game must be playable by keyboard. Correct and wrong answer states can't depend on color alone. Live changes (answer results, leaderboard updates, room status) must reach screen-reader users.

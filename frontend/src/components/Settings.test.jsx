@@ -19,6 +19,25 @@ describe('Settings', () => {
     await user.click(screen.getByRole('radio', { name: '20 sec' }));
     expect(onChange).toHaveBeenCalledWith({ ...defaults, timer: '20' });
   });
+
+  it('puts an impossible number of questions back in range when you leave the box', async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [settings, setSettings] = useState(defaults);
+      return <Settings settings={settings} onChange={setSettings} />;
+    }
+    render(<Harness />);
+    const box = screen.getByLabelText('Number of questions (1–50)');
+
+    await user.clear(box);
+    await user.type(box, '999');
+    await user.tab();
+    expect(box).toHaveValue(50);
+
+    await user.clear(box);
+    await user.tab();
+    expect(box).toHaveValue(10);
+  });
 });
 
 describe('Folding the settings away', () => {

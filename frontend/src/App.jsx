@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import OfflineBanner from './components/OfflineBanner';
 import { AnswerLog, HowToPlay, LineMap, RoundBoard } from './components/SideBoards';
 import WakeBanner from './components/WakeBanner';
 import useIndicator from './hooks/useIndicator';
+import { prefersReducedMotion } from './lib/motion';
 import { refillPack } from './lib/offlinePack';
 import { hasSeat } from './lib/seat';
+import { DEFAULT_SETTINGS } from './lib/settings';
 import Daily from './modes/daily/Daily';
 import Multiplayer from './modes/multiplayer/Multiplayer';
 import Solo from './modes/solo/Solo';
 
 // The whole page: the station sign with the mode tabs, the three modes, and the side boards
 // that hang beside them on wide screens. Each mode is its own component in modes/.
-
-const defaultSettings = { amount: 10, category: '', difficulty: '', type: '', timer: '' };
 
 // Open on multiplayer for an invite link, or when this tab was in a room before a reload
 const startInMultiplayer = new URLSearchParams(window.location.search).has('room') || hasSeat();
@@ -26,8 +26,8 @@ const MODES = [
 function App() {
   const [mode, setMode] = useState(startInMultiplayer ? 'multi' : 'solo');
   // Solo and multiplayer each keep their own settings, so changing one never changes the other
-  const [soloSettings, setSoloSettings] = useState(defaultSettings);
-  const [roomSettings, setRoomSettings] = useState(defaultSettings);
+  const [soloSettings, setSoloSettings] = useState(DEFAULT_SETTINGS);
+  const [roomSettings, setRoomSettings] = useState(DEFAULT_SETTINGS);
   const tabsRef = useRef(null);
   // Tabs keyboard pattern: arrows (and Home / End) move between modes, focus follows
   function onTabKey(event) {
@@ -51,6 +51,24 @@ function App() {
   const onSoloProgress = useCallback((p) => setProgress((prev) => ({ ...prev, solo: p })), []);
   const onDailyProgress = useCallback((p) => setProgress((prev) => ({ ...prev, daily: p })), []);
   const onMultiProgress = useCallback((p) => setProgress((prev) => ({ ...prev, multi: p })), []);
+
+  // The boards swing onto the wall once, as the page opens. Boards that appear later (another
+  // mode, a question, the results) just drop in (styles/layout.css). The swing is played from
+  // here rather than from CSS so that nothing restarts once it has finished.
+  const mainRef = useRef(null);
+  useLayoutEffect(() => {
+    if (prefersReducedMotion()) return;
+    const boards = mainRef.current?.querySelectorAll('.mode-panel:not([hidden]) > *') ?? [];
+    boards.forEach((board, i) =>
+      board.animate?.(
+        [
+          { opacity: 0, transform: 'perspective(1400px) translateY(-14px) rotateX(9deg)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        { duration: 520, delay: Math.min(i, 3) * 70, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'backwards' }
+      )
+    );
+  }, []);
 
   // Keep a pack of questions saved for offline solo play. It waits until the page has settled
   // (so it never competes with the first quiz for the trivia service's one-request-per-five-
@@ -90,7 +108,7 @@ function App() {
             ))}
           </div>
         </div>
-        <p>Quiz web app designed with Python, React, and FastAPI, utilizing Open Trivia DB's API for trivia questions.</p>
+        <p>Trivia on a departure board. Play a round on your own, take today's challenge, or start a room with friends.</p>
       </header>
 
       {/* Wide screens only: boards hung on the wall either side of the quiz */}
@@ -101,7 +119,7 @@ function App() {
         </div>
       </aside>
 
-      <div className="main-col">
+      <div className="main-col" ref={mainRef}>
         <WakeBanner />
         <OfflineBanner />
 

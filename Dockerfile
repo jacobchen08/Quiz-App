@@ -1,6 +1,7 @@
+
 # Builds the React frontend, then serves it from the FastAPI backend as a single web service.
 
-# ---- 1. Build the frontend ----
+# --- 1. Build the frontend ---
 FROM node:22-slim AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./

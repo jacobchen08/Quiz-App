@@ -1,19 +1,6 @@
 import { useState } from 'react';
 import Icon from './Icon';
-
-// Copy the old-fashioned way when the clipboard API isn't available (plain http, older browsers)
-function copyWithTextarea(text) {
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  area.style.position = 'fixed';
-  area.style.opacity = '0';
-  document.body.appendChild(area);
-  area.select();
-  const ok = document.execCommand('copy');
-  area.remove();
-  return ok;
-}
+import { copyText } from '../lib/clipboard';
 
 const SQUARES = { '🟩': 'correct', '🟥': 'wrong', '⬜': 'none' };
 const isSquaresLine = (line) => line.length > 0 && [...line].every((ch) => ch in SQUARES);
@@ -62,13 +49,7 @@ function ShareResult({ text }) {
         if (e?.name === 'AbortError') return; // they closed the share sheet
       }
     }
-    let ok = false;
-    try {
-      await navigator.clipboard.writeText(text);
-      ok = true;
-    } catch {
-      ok = copyWithTextarea(text);
-    }
+    const ok = await copyText(text);
     setStatus(ok ? 'copied' : 'failed');
     setTimeout(() => setStatus('idle'), 2000);
   }

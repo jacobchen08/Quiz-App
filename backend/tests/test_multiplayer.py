@@ -247,3 +247,24 @@ def test_a_held_seat_expires_after_the_grace_period():
     later = player.left_at + multiplayer.RECONNECT_GRACE + 1
     assert expire_seat(room, player, now=later)
     assert "TEST1" not in multiplayer.rooms  # the last seat going closes the room
+
+
+def test_a_token_with_unusual_characters_is_just_a_wrong_token(client):
+    code = new_room(client)
+    with client.websocket_connect(f"/api/ws/{code}") as ws:
+        join(ws, "Ann")
+        with client.websocket_connect(f"/api/ws/{code}") as other:
+            # compare_digest can't compare non-ASCII strings, so this used to crash the handler
+            second = join(other, "Zoë", token="tökén-✓")
+            assert second["playerId"]
+
+
+def test_an_answer_that_isnt_text_is_marked_wrong_not_crashed_on(client):
+    code = new_room(client)
+    with client.websocket_connect(f"/api/ws/{code}") as ws:
+        join(ws, "Ann")
+        ws.send_json({"type": "start", "settings": {"amount": 3}})
+        receive_until(ws, "questions")
+        ws.send_json({"type": "answer", "index": 0, "answer": {"not": "text"}})
+        result = receive_until(ws, "answer_result")
+    assert result["correct"] is False and isinstance(result["answer"], str)
