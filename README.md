@@ -19,7 +19,7 @@ The frontend is React and Vite. The backend is FastAPI, with WebSockets for the 
 ## Features
 
 - **Solo:** 1 to 50 questions, with optional filters for category, difficulty and question type, and an optional timer. At the end you see the questions you missed and get a result you can share.
-- **Daily:** the same ten questions for everyone, once a day. The leaderboard sorts by correct answers, then time.
+- **Daily:** the same ten questions for everyone, once a day (the day changes at midnight UTC). The leaderboard sorts by correct answers, then time.
 - **Multiplayer:** create a room and send friends the code or invite link. A right answer is worth 100 points, plus up to 50 more for speed. With a timer on, everyone answers each question at the same time.
 
 It also handles reconnecting (reload mid-game and you're back in your seat), works offline for solo play once you've visited, and can be played from the keyboard: `A` to `D` to choose, `Enter` to submit, arrow keys to move between questions.
@@ -57,6 +57,7 @@ A few design choices worth explaining:
 - When a player's connection drops without them leaving, the server holds their seat for 90 seconds. The browser keeps a token for that tab and uses it to rejoin. Without this, a phone switching apps for a moment would knock someone out of the game.
 - Timed games run on the server's clock. Every update includes the server's current time, so each browser can count down to the same deadline, and answers that arrive too late are refused.
 - There are no accounts. The daily challenge identifies you with a random token saved in your browser. Clearing your storage would give you a second attempt, which seemed like a fair trade for not making anyone sign up.
+- A daily run started just before midnight can still be finished after it. The browser sends the date the run started with each answer, and the server accepts it if that's today or yesterday.
 
 ## Running it locally
 
@@ -87,10 +88,11 @@ python -m pytest backend
 
 # frontend unit tests and end-to-end tests (run inside frontend/)
 npm test
+npx playwright install chromium firefox webkit   # once
 npm run test:e2e
 ```
 
-The backend tests cover fetching questions, multiplayer rooms (scoring, reconnecting, timed games), the daily challenge and rate limiting. The end-to-end tests play each mode in a real browser, including a two-player game where one player reloads halfway through, and run accessibility checks in light and dark mode. They start their own copy of the API with fixed test questions, so they don't need the internet.
+The backend tests cover fetching questions, multiplayer rooms (scoring, reconnecting, timed games), the daily challenge and rate limiting. The end-to-end tests play each mode in Chromium, Firefox and WebKit (the engine behind Safari), including a two-player game where one player reloads halfway through and a round on a phone-sized screen, and run accessibility checks in light and dark mode. They start their own copy of the API with fixed test questions, so they don't need the internet. Locally they skip Firefox unless you set `E2E_BROWSERS=chromium,firefox,webkit`, because some Windows security settings block Playwright's copy of it.
 
 GitHub Actions runs everything on each push, and runs the daily challenge tests a second time against Postgres.
 

@@ -373,7 +373,7 @@ Departure rows: a 44px split letter tile, the answer text, and a status column.
 - **Share ticket:** a row-fill slip with a 4px board-edge top edge, a condensed title, a row of 26px mark tiles (glyphs in status colour), and dim 14px lines.
 
 ### Motion
-One settle curve (`cubic-bezier(0.16, 1, 0.3, 1)`) for everything that travels. Boards hang in with a 9° tilt (520ms, staggered 70ms). The flap cascade advances 55ms per character with a 45ms stagger between tiles, runs at most 6 steps, and each top leaf falls in 80ms. With `prefers-reduced-motion`, leaves, hangs, slides and pulses are removed and every state change lands immediately.
+One settle curve (`cubic-bezier(0.16, 1, 0.3, 1)`) for everything that travels. The boards hang onto the wall with a 9° tilt (520ms, staggered 70ms) once, as the page opens; boards that appear after that (another mode, a question, the results) drop in over 280ms instead of swinging every time. Each flap flip takes about 110ms (the top leaf falls, then the bottom leaf lands), neighbouring tiles start 18ms apart, and a tile runs at most 9 steps. Digits more than two steps away flip straight to the new value, so a countdown never spins the whole wheel. With `prefers-reduced-motion`, leaves, hangs, slides and pulses are removed and every state change lands immediately.
 
 ## Do's and Don'ts
 

@@ -67,8 +67,9 @@ function Daily({ onProgress }) {
 
   useBringIntoView(stageRef, justStarted);
 
-  const refreshBoard = useCallback(() => {
-    daily.leaderboard(token).then(setBoard).catch(() => {});
+  // `day` is the run's date once known; without it the server shows today's board
+  const refreshBoard = useCallback((day) => {
+    daily.leaderboard(token, day).then(setBoard).catch(() => {});
   }, [token]);
 
   // Take in the server's view of this player: their answers, and where to carry on
@@ -129,10 +130,10 @@ function Daily({ onProgress }) {
     setResults((prev) => ({ ...prev, [index]: { answer: option } })); // shows as "checking"
     setError('');
     try {
-      const data = await daily.answer(token, index, option);
+      const data = await daily.answer(token, index, option, date);
       setResults((prev) => ({ ...prev, [index]: data }));
       setPlayer(data.player);
-      if (data.player.finished) refreshBoard();
+      if (data.player.finished) refreshBoard(date);
     } catch (e) {
       setResults((prev) => {
         const copy = { ...prev };
@@ -299,7 +300,7 @@ function Daily({ onProgress }) {
       {status === 'intro' && (
         <section className="board board-idle">
           <div className="board-body">
-            <FlapText text="DAILY" length={10} label="" size="lg" />
+            <FlapText text="DAILY" label="" size="lg" />
             <p>Today's questions stay hidden until you start.</p>
           </div>
         </section>

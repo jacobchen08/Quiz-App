@@ -3,7 +3,7 @@ name: CI
 # Runs on every push and pull request:
 # - backend tests, on SQLite and again on a real Postgres
 # - frontend lint, unit tests and build
-# - end-to-end tests: real browsers playing solo, daily and a two-player timed room
+# - end-to-end tests in Chromium, Firefox and WebKit: solo, daily, offline and a two-player timed room
 on:
   push:
   pull_request:
@@ -81,7 +81,7 @@ jobs:
         run: |
           pip install -r ../backend/requirements.txt
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium firefox webkit
       - name: Run end-to-end tests
         run: npm run test:e2e
       - name: Keep the trace of any failure

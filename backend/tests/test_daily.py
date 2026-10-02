@@ -133,3 +133,29 @@ def test_unfinished_players_are_not_on_the_leaderboard(client):
     start(client, "token-ann-1")
     answer(client, "token-ann-1", 0, "True")
     assert client.get("/api/daily/leaderboard").json()["entries"] == []
+
+
+def test_a_run_started_before_midnight_can_be_finished_after_it(client, monkeypatch):
+    start(client, "token-ann-1")
+    play(client, "token-ann-1", RIGHT[:5])
+    monkeypatch.setattr(daily, "today", lambda: "2026-01-02")  # midnight passes mid-run
+
+    def answer_on(index, value, date):
+        return client.post("/api/daily/answer", json={"token": "token-ann-1", "index": index, "answer": value, "date": date})
+
+    for i in range(5, 10):
+        assert answer_on(i, RIGHT[i], "2026-01-01").status_code == 200
+    board = client.get("/api/daily/leaderboard", params={"date": "2026-01-01"}, headers={"X-Quizzr-Token": "token-ann-1"}).json()
+    assert board["date"] == "2026-01-01" and board["entries"][0]["you"] and board["entries"][0]["correct"] == 10
+
+    # Without the date the answer would count towards a new day the player never started
+    assert answer(client, "token-ann-1", 0, "True").status_code == 404
+
+
+def test_older_challenges_are_closed(client, monkeypatch):
+    start(client, "token-ann-1")
+    monkeypatch.setattr(daily, "today", lambda: "2026-01-03")
+    late = client.post("/api/daily/answer", json={"token": "token-ann-1", "index": 0, "answer": "True", "date": "2026-01-01"})
+    assert late.status_code == 400
+    assert client.get("/api/daily/leaderboard", params={"date": "2026-01-01"}).status_code == 400
+    assert client.get("/api/daily/leaderboard", params={"date": "not-a-date"}).status_code == 422

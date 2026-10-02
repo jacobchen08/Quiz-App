@@ -169,7 +169,8 @@ class Room:
     def find_by_token(self, token):
         if not token:
             return None
-        return next((p for p in self.players.values() if secrets.compare_digest(p.token, str(token))), None)
+        given = str(token).encode()  # as bytes: compare_digest refuses non-ASCII strings
+        return next((p for p in self.players.values() if secrets.compare_digest(p.token.encode(), given)), None)
 
     def pass_host_if_needed(self):
         """Keep a connected host whenever anyone is connected."""
@@ -439,6 +440,7 @@ async def submit_answer(room, player, index, answer):
             await player.ws.send_json({"type": "answer_rejected", "index": index, "message": "Time's up for that question."})
             return
 
+    answer = str(answer)  # whatever the message held, store and echo it as text
     question = room.questions[index]
     correct = answer == question["correct"]
     points = player.record(index, answer, correct, time.time())

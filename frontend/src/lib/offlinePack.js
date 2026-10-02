@@ -1,5 +1,7 @@
 import { apiUrl } from './api';
 import { categoryById } from './categories';
+import { shuffle } from './questions';
+import { clampAmount } from './settings';
 import { KEYS, readStoredJson, writeStored } from './storage';
 
 // A pack of questions saved in this browser, so solo play still works offline.
@@ -63,7 +65,7 @@ function matches(question, settings) {
 
 // Deal a round from the pack. The dealt questions are taken out, so offline rounds never repeat.
 export function dealFromPack(settings) {
-  const amount = Math.max(1, Math.min(Number(settings.amount) || 10, 50));
+  const amount = clampAmount(settings.amount);
   const pack = read();
   const fitting = pack.questions.filter((q) => matches(q, settings));
 
@@ -80,7 +82,7 @@ export function dealFromPack(settings) {
     );
   }
 
-  const dealt = [...fitting].sort(() => Math.random() - 0.5).slice(0, amount);
+  const dealt = shuffle(fitting).slice(0, amount);
   const used = new Set(dealt.map((q) => q.question));
   write({ ...pack, questions: pack.questions.filter((q) => !used.has(q.question)) });
   return dealt;

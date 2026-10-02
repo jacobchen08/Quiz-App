@@ -20,7 +20,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 16px 8px 14px;
+  padding: 8px 20px 8px 24px;
   border: 0;
   border-top: 1px solid transparent;
   border-bottom: 1px solid var(--board-edge);
@@ -112,7 +112,7 @@
 
 .log-empty {
   margin: 0;
-  padding: 18px 20px 22px;
+  padding: 18px 24px 22px;
   font-size: 14px;
   color: var(--ink-dim);
 }
@@ -127,7 +127,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 10px 20px;
+    padding: 10px 24px;
     font-size: 15px;
     line-height: 1.35;
     color: var(--ink);
@@ -145,7 +145,7 @@
 /* ---------- Round board ---------- */
 .round-stats {
   margin: 0;
-  padding: 6px 20px 10px;
+  padding: 6px 24px 10px;
 
   div {
     display: flex;
@@ -176,7 +176,7 @@
 
 .round-empty {
   margin: 0;
-  padding: 0 20px 20px;
+  padding: 0 24px 20px;
   font-size: 14px;
   color: var(--ink-dim);
 }
@@ -187,7 +187,7 @@
   flex-direction: column;
   gap: 14px;
   margin: 0;
-  padding: 18px 20px 22px;
+  padding: 18px 24px 22px;
   list-style: none;
 
   li {

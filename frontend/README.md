@@ -6,7 +6,7 @@ The React + Vite app for Quizzr. See the [main README](../README.md) for what it
 npm install
 npm run dev        # http://localhost:5173, forwards /api to the API on port 8000
 npm test           # unit tests (Vitest)
-npm run test:e2e   # end-to-end and accessibility tests (Playwright)
+npm run test:e2e   # end-to-end and accessibility tests (Playwright: Chromium and WebKit; CI adds Firefox)
 npm run lint       # oxlint
 npm run build      # production build in dist/
 ```
