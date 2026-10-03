@@ -3,7 +3,7 @@ import FlapText from './FlapText';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import Pips from './Pips';
-import { categoryByName, difficultyByValue } from '../lib/categories';
+import { categoryByName, categoryLabel, difficultyByValue } from '../lib/categories';
 import { markLabels } from '../lib/results';
 
 // Shows one question with its answer buttons. Used by solo, daily and multiplayer.
@@ -221,7 +221,7 @@ function QuestionCard({
             {category && (
               <p className="category-tag">
                 {line && <RouteBadge code={line.code} line={line.line} size="sm" />}
-                {category}
+                {categoryLabel(category)}
               </p>
             )}
             {level && (

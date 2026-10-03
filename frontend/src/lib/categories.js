@@ -37,6 +37,13 @@ export function categoryByName(name) {
   return categories.find((c) => c.name === name);
 }
 
+// A category's name as players see it: "Entertainment: Video Games" reads as "Video Games" and
+// "Science: Computers" as "Computers". The line badge beside it already shows the family.
+// (The full name stays in the data, because Open Trivia DB uses it to identify the category.)
+export function categoryLabel(name) {
+  return String(name ?? '').replace(/^(Entertainment|Science): /, '');
+}
+
 // Difficulty levels: a line colour plus a count of pips, so it never relies on colour alone
 export const difficulties = [
   { value: 'easy', label: 'Easy', accent: 'teal', pips: 1 },

@@ -2,14 +2,14 @@ import { useRef } from 'react';
 import Icon from './Icon';
 import RouteBadge from './RouteBadge';
 import useIndicator from '../hooks/useIndicator';
-import { categories, categoryById, difficulties } from '../lib/categories';
+import { categories, categoryById, categoryLabel, difficulties } from '../lib/categories';
 import { clampAmount, MAX_QUESTIONS, MIN_QUESTIONS } from '../lib/settings';
 import Pips from './Pips';
 
 const difficultyOptions = [{ value: '', label: 'Any' }, ...difficulties];
 
 // Listed A–Z in the picker ("Any Category" stays first)
-const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
+const sortedCategories = [...categories].sort((a, b) => categoryLabel(a.name).localeCompare(categoryLabel(b.name)));
 
 // Seconds per question. Off (the default) means take as long as you like.
 const timers = [
@@ -97,7 +97,7 @@ function Settings({ settings, onChange, idPrefix = '' }) {
           <select id={`${idPrefix}category`} value={settings.category} onChange={(e) => update('category', e.target.value)}>
             <option value="">Any Category</option>
             {sortedCategories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>{categoryLabel(c.name)}</option>
             ))}
           </select>
           <Icon name="chevron-down" className="select-chevron" />
@@ -142,7 +142,7 @@ export function SettingsLine({ settings }) {
   const timer = settings.timer ? `${settings.timer} sec per question` : 'No time limit';
   return (
     <p className="settings-line">
-      {[`${amount} question${amount === 1 ? '' : 's'}`, categoryById(settings.category).name, difficulty, type, timer].join(' · ')}
+      {[`${amount} question${amount === 1 ? '' : 's'}`, categoryLabel(categoryById(settings.category).name), difficulty, type, timer].join(' · ')}
     </p>
   );
 }
@@ -176,7 +176,7 @@ export function FoldingSettings({ id, open, settings, onChange, idPrefix }) {
 export function SettingsSummary({ settings }) {
   const rows = [
     ['Questions', settings.amount],
-    ['Category', categoryById(settings.category).name],
+    ['Category', categoryLabel(categoryById(settings.category).name)],
     ['Difficulty', optionLabel(difficultyOptions, settings.difficulty)],
     ['Question type', optionLabel(types, settings.type)],
     ['Time per question', optionLabel(timers, settings.timer)],
